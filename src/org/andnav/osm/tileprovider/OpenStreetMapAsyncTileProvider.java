@@ -6,6 +6,10 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.andnav.osm.tileprovider.constants.OpenStreetMapTileProviderConstants;
 import org.slf4j.Logger;
@@ -20,6 +24,17 @@ import android.graphics.drawable.Drawable;
  */
 public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTileProviderConstants {
 
+
+	public static final ThreadFactory defaultThreadFactory = new ThreadFactory() {
+        private final AtomicInteger mCount = new AtomicInteger(1);
+
+        public Thread newThread(Runnable r) {
+            return new Thread(r, "OsmAsyncTask #" + mCount.getAndIncrement());
+        }
+    };
+
+	static final ExecutorService mExeServicenew = 
+		Executors.newFixedThreadPool(10, defaultThreadFactory);
 	/**
 	 * 
 	 * @return
@@ -47,9 +62,22 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 	protected final IOpenStreetMapTileProviderCallback mCallback;
 
-	public OpenStreetMapAsyncTileProvider(final IOpenStreetMapTileProviderCallback pCallback, final int aThreadPoolSize, final int aPendingQueueSize) {
+	public  class SimpleThreadFactory implements ThreadFactory 
+	{
+		public Thread newThread(Runnable r) {
+			Thread t = new Thread(mThreadPool, r);
+			t.setPriority(Thread.NORM_PRIORITY);
+			return t;
+		}
+	}
+
+	
+	public OpenStreetMapAsyncTileProvider(final IOpenStreetMapTileProviderCallback pCallback, final int aThreadPoolSize, final int aPendingQueueSize) 
+	{
 		mCallback = pCallback;
 		mThreadPoolSize = aThreadPoolSize;
+		
+		
 		mCurrentThreadPoolSize = aThreadPoolSize;
 		mWorking = new ConcurrentHashMap<OpenStreetMapTile, Object>();
 		mPending = new LinkedHashMap<OpenStreetMapTile, Object>(aPendingQueueSize + 2, 0.1f, true) {
@@ -89,10 +117,8 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 		if (DEBUGMODE)
 			logger.debug(activeCount + " active threads");
-		if (activeCount < mCurrentThreadPoolSize) {
-			final Thread t = new Thread(mThreadPool, getTileLoader());
-			t.start();
-		}
+
+		mExeServicenew.execute(getTileLoader()); 
 	}
 
 	private void clearQueue() {
