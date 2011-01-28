@@ -37,7 +37,7 @@ public class OpenStreetMapTileProviderDirect extends OpenStreetMapTileProvider i
 
 	@Override
 	public Drawable getMapTile(final OpenStreetMapTile pTile) {
-		if (mTileCache.containsTile(pTile)) {
+		if (mTileCache.containsTile(pTile))  {
 			if (DEBUGMODE)
 				logger.debug("MapTileCache succeeded for: " + pTile);
 			return mTileCache.getMapTile(pTile);

@@ -87,7 +87,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private final ArrayList<OpenStreetMapViewOverlay> mOverlays = new ArrayList<OpenStreetMapViewOverlay>();
 
 	private final Paint mPaint = new Paint();
-	private OpenStreetMapViewProjection mProjection;
+	private OpenStreetMapViewProjection mProjection = null;
+	
 
 	private OpenStreetMapView mMiniMap, mMaxiMap;
 	private final OpenStreetMapTilesOverlay mMapOverlay;
@@ -104,6 +105,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private OpenStreetMapViewController mController;
 	private int mMiniMapOverriddenVisibility = NOT_SET;
 	private int mMiniMapZoomDiff = NOT_SET;
+
+	static int[] tcoords = new int[2];
 
 	// XXX we can use android.widget.ZoomButtonsController if we upgrade the dependency to Android 1.6
 	private ZoomButtonsController mZoomController;
@@ -374,7 +377,6 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		final int[] coords = Mercator.projectGeoPoint(aLatitudeE6, aLongitudeE6, getPixelZoomLevel(), null);
 		final int worldSize_2 = getWorldSizePx()/2;
 		if (getAnimation() == null || getAnimation().hasEnded()) {
-			logger.debug("StartScroll");
 			mScroller.startScroll(getScrollX(), getScrollY(),
 					coords[MAPTILE_LONGITUDE_INDEX] - worldSize_2 - getScrollX(),
 					coords[MAPTILE_LATITUDE_INDEX] - worldSize_2 - getScrollY(), 500);
@@ -726,7 +728,14 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	public void onDraw(final Canvas c) {
 		final long startMs = System.currentTimeMillis();
 
-		mProjection = new OpenStreetMapViewProjection();
+		if (mProjection == null)
+		{
+			mProjection = new OpenStreetMapViewProjection();
+		}
+		else
+		{
+			mProjection.setup();
+		}
 
 		if (mMultiTouchScale == 1.0f) {
 			c.translate(getWidth() / 2, getHeight() / 2);
@@ -900,21 +909,34 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	 */
 	public class OpenStreetMapViewProjection {
 
-		private final int viewWidth_2 = getWidth() / 2;
-		private final int viewHeight_2 = getHeight() / 2;
-		private final int worldSize_2 = getWorldSizePx()/2;
-		private final int offsetX = - worldSize_2;
-		private final int offsetY = - worldSize_2;
+		private int viewWidth_2 = getWidth() / 2;
+		private int viewHeight_2 = getHeight() / 2;
+		private int worldSize_2 = getWorldSizePx()/2;
+		private int offsetX = - worldSize_2;
+		private int offsetY = - worldSize_2;
 
-		private final BoundingBoxE6 bb;
-		private final int zoomLevel;
-		private final int tileSizePx;
-		private final int[] centerMapTileCoords;
-		private final Point upperLeftCornerOfCenterMapTile;
+		private BoundingBoxE6 bb;
+		private int zoomLevel;
+		private int tileSizePx;
+		private int[] centerMapTileCoords;
+		private Point upperLeftCornerOfCenterMapTile;
 
 		private final int[] reuseInt2 = new int[2];
 
-		private OpenStreetMapViewProjection() {
+		private OpenStreetMapViewProjection() 
+		{
+			
+			setup();
+		}
+
+		
+		void setup()
+		{
+			viewWidth_2 = getWidth() / 2;
+			viewHeight_2 = getHeight() / 2;
+			worldSize_2 = getWorldSizePx()/2;
+			offsetX = - worldSize_2;
+			offsetY = - worldSize_2;
 
 			/*
 			 * Do some calculations and drag attributes to local variables to
@@ -936,8 +958,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 					centerMapTileCoords, tileSizePx, null);
 
 			bb = OpenStreetMapView.this.getDrawnBoundingBoxE6();
+			
 		}
-
 		/**
 		 * Converts x/y ScreenCoordinates to the underlying GeoPoint.
 		 *
@@ -988,11 +1010,12 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		 * @return the Point containing the approximated ScreenCoordinates of
 		 *         the GeoPoint passed.
 		 */
+		
 		public Point toMapPixels(final GeoPoint in, final Point reuse) {
 			final Point out = (reuse != null) ? reuse : new Point();
 
-			final int[] coords = Mercator.projectGeoPoint(in.getLatitudeE6(), in.getLongitudeE6(), getPixelZoomLevel(), null);
-			out.set(coords[MAPTILE_LONGITUDE_INDEX], coords[MAPTILE_LATITUDE_INDEX]);
+			tcoords = Mercator.projectGeoPoint(in.getLatitudeE6(), in.getLongitudeE6(), getPixelZoomLevel(), tcoords);
+			out.set(tcoords[MAPTILE_LONGITUDE_INDEX], tcoords[MAPTILE_LATITUDE_INDEX]);
 			out.offset(offsetX, offsetY);
 			return out;
 		}

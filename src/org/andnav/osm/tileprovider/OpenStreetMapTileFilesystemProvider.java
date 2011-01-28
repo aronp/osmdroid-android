@@ -9,6 +9,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -38,6 +42,9 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	// Constants
 	// ===========================================================
 
+	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Files",NUMBER_OF_TILE_FILESYSTEM_THREADS);
+	
+	
 	private static final Logger logger = LoggerFactory.getLogger(OpenStreetMapTileFilesystemProvider.class);
 
 	// ===========================================================
@@ -62,6 +69,8 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	private final IRegisterReceiver aRegisterReceiver;
 	private final MyBroadcastReceiver mBroadcastReceiver;
 
+	// private static final boolean DEBUGMODE = true;
+	
 	// ===========================================================
 	// Constructors
 	// ===========================================================
@@ -113,9 +122,12 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 		return "filesystem";
 	}
 
+	final TileLoader sTileLoader = new TileLoader();
+	
 	@Override
 	protected Runnable getTileLoader() {
-		return new TileLoader();
+		return sTileLoader;
+		// return new TileLoader();
 	};
 
 	@Override
@@ -243,6 +255,7 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 
 	private class TileLoader extends OpenStreetMapAsyncTileProvider.TileLoader {
 
+		// private boolean DEBUGMODE = true;
 		/**
 		 * The tile loading policy for deciding which file to use...
 		 * The order of preferences is...
@@ -383,6 +396,11 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 				findZipFiles();
 			}
 		}
+	}
+
+	@Override
+	protected OSMThreadFactory getOSMThreadFactory() {
+		return mThreadFactory;
 	}
 
 }

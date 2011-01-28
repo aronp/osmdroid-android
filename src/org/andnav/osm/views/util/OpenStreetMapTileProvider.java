@@ -4,6 +4,7 @@ package org.andnav.osm.views.util;
 
 import java.io.InputStream;
 
+import org.andnav.osm.tileprovider.LongObjectQueue;
 import org.andnav.osm.tileprovider.OpenStreetMapTile;
 import org.andnav.osm.views.util.constants.OpenStreetMapViewConstants;
 import org.slf4j.Logger;
@@ -28,7 +29,9 @@ public abstract class OpenStreetMapTileProvider implements OpenStreetMapViewCons
 
 	private static final Logger logger = LoggerFactory.getLogger(OpenStreetMapTileProvider.class);
 
-	protected final OpenStreetMapTileCache mTileCache;
+	// protected final OpenStreetMapTileCache mTileCache;
+	protected OpenStreetMapTileCache mTileCache;
+	
 	protected final Handler mDownloadFinishedHandler;
 	protected boolean mUseDataConnection = true;
 
@@ -84,6 +87,7 @@ public abstract class OpenStreetMapTileProvider implements OpenStreetMapViewCons
 		try {
 			final Drawable drawable = pTile.getRenderer().getDrawable(pTileInputStream);
 			if (drawable != null) {
+//				mTileCache.putTile(pTile, drawable);
 				mTileCache.putTile(pTile, drawable);
 			}
 		} finally {
@@ -103,6 +107,7 @@ public abstract class OpenStreetMapTileProvider implements OpenStreetMapViewCons
 	public void mapTileRequestCompleted(final OpenStreetMapTile pTile, final Drawable drawable) {
 		try {
 			if (drawable != null) {
+//				mTileCache.putTile(pTile, drawable);
 				mTileCache.putTile(pTile, drawable);
 			}
 		} finally {

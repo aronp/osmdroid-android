@@ -38,6 +38,9 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 	private final OpenStreetMapTileFilesystemProvider mMapTileFSProvider;
 	private String mCloudmadeToken;
 
+	
+	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Tiles",NUMBER_OF_TILE_DOWNLOAD_THREADS );  
+	
 	// ===========================================================
 	// Constructors
 	// ===========================================================
@@ -60,9 +63,12 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 		return "downloader";
 	}
 
+	final TileLoader mTileLoader = new TileLoader();
+	
 	@Override
 	protected Runnable getTileLoader() {
-		return new TileLoader();
+		// return new TileLoader();
+		return mTileLoader;
 	};
 
 	// ===========================================================
@@ -122,6 +128,7 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 			} catch(final FileNotFoundException e){
 				logger.warn("Tile not found: " + aTile+ " : " + e);
 				tileNotLoaded(aTile);
+				sleep();
 			} catch (final IOException e) {
 				logger.warn("IOException downloading MapTile: " + aTile + " : " + e);
 				tileNotLoaded(aTile);
@@ -129,6 +136,7 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 			} catch (final CloudmadeException e) {
 				logger.warn("CloudmadeException downloading MapTile: " + aTile + " : " + e);
 				tileNotLoaded(aTile);
+				sleep();
 			} catch(final Throwable e) {
 				logger.error("Error downloading MapTile: " + aTile, e);
 				tileNotLoaded(aTile);
@@ -172,5 +180,10 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 		} catch (InterruptedException e) 
 		{
 		}
+	}
+
+	@Override
+	protected OSMThreadFactory getOSMThreadFactory() {
+		return mThreadFactory;
 	}
 }

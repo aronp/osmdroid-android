@@ -59,6 +59,10 @@ public class OpenStreetMapAsyncTileProviderTest {
 					}
 				};
 			}
+			@Override
+			protected OSMThreadFactory getOSMThreadFactory()  {
+				return null;
+			}
 		};
 
 		final OpenStreetMapTile tile = new OpenStreetMapTile(OpenStreetMapRendererFactory.MAPNIK, 1, 1, 1);
@@ -122,6 +126,11 @@ public class OpenStreetMapAsyncTileProviderTest {
 						tileLoaded(aTile, aTile.toString());
 					}
 				};
+			}
+			@Override
+			protected OSMThreadFactory getOSMThreadFactory() {
+				// TODO Auto-generated method stub
+				return null;
 			}
 		};
 
@@ -201,6 +210,11 @@ public class OpenStreetMapAsyncTileProviderTest {
 						tileLoaded(aTile, aTile.toString());
 					}
 				};
+			}
+			@Override
+			protected OSMThreadFactory getOSMThreadFactory() {
+				// TODO Auto-generated method stub
+				return null;
 			}
 		};
 
