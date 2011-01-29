@@ -20,7 +20,7 @@ public class OSMThreadFactory {
 
 	        public Thread newThread(Runnable r) {
 	        	Thread t =new Thread(mThreadPool, r, name+ "#" + mCount.getAndIncrement()); 
-	        	t.setPriority((Thread.MIN_PRIORITY+Thread.NORM_PRIORITY)/2);
+	        	t.setPriority(Thread.NORM_PRIORITY-1);
 	            return t;
 	        }
 	    };

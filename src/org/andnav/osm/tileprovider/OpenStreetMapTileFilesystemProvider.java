@@ -9,10 +9,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -42,7 +38,7 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	// Constants
 	// ===========================================================
 
-	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Files",NUMBER_OF_TILE_FILESYSTEM_THREADS);
+	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Files",NUMBER_OF_TILE_FILESYSTEM_THREADS );
 	
 	
 	private static final Logger logger = LoggerFactory.getLogger(OpenStreetMapTileFilesystemProvider.class);

@@ -2,15 +2,19 @@ package org.andnav.osm.tileprovider;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import gnu.trove.map.hash.TLongIntHashMap;
 
-public class LongObjectLRUCache 
+public class LongObjectLRUCache<T> 
 {
+	
+	protected static final Logger logger = LoggerFactory.getLogger(LongObjectLRUCache.class);
+
 	Object [] objArray;
 	long [] arrayToKey;
-	links [] mLinks;
-//	long [] prevLinks;
-//	long [] nextLinks;
+	links<T> [] mLinks;
 	
 	TLongIntHashMap KeyToArray;
 	int mSize;
@@ -23,33 +27,27 @@ public class LongObjectLRUCache
 		return (link >= 0);
 	}
 	
-	class links 
+	@SuppressWarnings("hiding")
+	class links<T> 
 	{
 		int prev = -1;
 		int next = -1;
 	};
 
+	@SuppressWarnings("unchecked")
 	public LongObjectLRUCache(int size)
 	{
 		objArray = new Object[size];
 		arrayToKey = new long [size];
 
-//		prevLinks = new long [size];
-//		nextLinks = new long [size];
-
 		KeyToArray = new TLongIntHashMap(size, 0.7f,-1,-1);
 		mLinks = new links[size];
 		mSize = size;
-		for (int i = 0;i<size;i++)
-		{
-			mLinks[i] = new links();
-//			prevLinks[i] = -1;
-//			nextLinks[i] = -1;
-		}
 	}
 
-	public void DebugPrint()
+	public void DebugPrint(String name)
 	{
+		System.out.println("Name:" + name + " Size:"+currSize.get());
 		System.out.println("First:" + mFirstPtr);
 		System.out.println("Last:" + mLastPtr);
 		for (int i = 0;i < currSize.get();i++)
@@ -58,19 +56,49 @@ public class LongObjectLRUCache
 		}
 	}
 
-	void ensureCapacity(int size)
+	@SuppressWarnings("unchecked")
+	public void ensureCapacity(int reqsize)
 	{
-		// objArray.ensureCapacity(size);
+		if (reqsize > mSize)
+		{
+//			logger.debug("Ensure " + reqsize + " Current size" + mSize);
 
+			Object [] tobjArray = new Object[reqsize];
+			long [] tarrayToKey = new long[reqsize];
+			links [] tmLinks = new links[reqsize];
+
+			synchronized(this)
+			{
+				KeyToArray.ensureCapacity(reqsize);
+				System.arraycopy(objArray, 0, tobjArray, 0, mSize);
+				System.arraycopy(arrayToKey, 0, tarrayToKey, 0, mSize);
+				System.arraycopy(mLinks, 0, tmLinks, 0, mSize);
+				
+				objArray = tobjArray;
+				arrayToKey = tarrayToKey;
+				mLinks = tmLinks;
+				mSize = reqsize;
+			}
+		}
 	}
 	
 	private void MoveToFront(int arrayIndex)
 	{
-		links curr = mLinks[arrayIndex];
-		
-		if (linkValid(curr.prev))
+		if (mFirstPtr == arrayIndex)
 		{
-			mLinks[curr.prev].next = curr.next;
+			// already first in queue.
+			return;
+		}
+		
+		links<T> curr = mLinks[arrayIndex];
+		
+		// if we are moving the last one dont update previous
+		if (mLastPtr != arrayIndex)
+		{
+			if (linkValid(curr.prev))
+			{
+				mLinks[curr.prev].next = curr.next;
+			}
 		}
 		
 		if (linkValid(curr.next))
@@ -95,7 +123,7 @@ public class LongObjectLRUCache
 		// move on first ptr
 		if (mFirstPtr != arrayIndex)
 		{
-			links first = mLinks[mFirstPtr];
+			links<T> first = mLinks[mFirstPtr];
 			first.next = arrayIndex;
 		}
 
@@ -118,12 +146,13 @@ public class LongObjectLRUCache
 		objArray[arrayIndex] = obj;
 		arrayToKey[arrayIndex] = index;
 		KeyToArray.put(index, arrayIndex);
+		mLinks[arrayIndex] = new links<T>();
 		
 		mLinks[arrayIndex].prev = mFirstPtr;
 
 		if (mFirstPtr >=0)
 		{
-			links firstLink = this.mLinks[mFirstPtr];
+			links<T> firstLink = this.mLinks[mFirstPtr];
 			firstLink.next = arrayIndex;
 		}
 
@@ -136,8 +165,11 @@ public class LongObjectLRUCache
 	}
 
 	
-	public void put(long index, Object obj)
+	public void put(long index, T obj)
 	{
+		synchronized(this)
+		{
+
 		int newSize = currSize.getAndAdd(1);
 		
 		if (newSize == 0)
@@ -156,11 +188,9 @@ public class LongObjectLRUCache
 			if (linkValid(existingIndex))
 			{
 				// already have this, need to update object and move to front.
+				currSize.getAndAdd(-1);
 				objArray[existingIndex] = obj;
-				synchronized(this)
-				{
 					MoveToFront(existingIndex);
-				}
 			}
 			else
 			{
@@ -172,40 +202,39 @@ public class LongObjectLRUCache
 					// decrease currSize back.
 					currSize.getAndAdd(-1);
 					
-					synchronized(this)
-					{
 						// remove key of mLastPtr
 						KeyToArray.remove(arrayToKey[mLastPtr]);
 						replaceHere(index,obj,mLastPtr);
 						MoveToFront(mLastPtr);
-					}
 				}
 				else
 				{
-					synchronized(this)
-					{
 						insertHere(index,obj,newSize);
-					}
 				}
 			}
 		}
+		}
 	}
 	
-	public Object get(long index)
+	@SuppressWarnings("unchecked")
+	public T get(long index)
 	{
-		int arrayIndex =  KeyToArray.get(index);
-		if (arrayIndex >= 0)
+		synchronized(this)
 		{
-			synchronized(this)
+			int arrayIndex =  KeyToArray.get(index);
+			if (arrayIndex >= 0)
 			{
 				MoveToFront(arrayIndex);
+
+//				logger.debug("Request " + index + " Found");
+
+				return (T) objArray[arrayIndex]; 
 			}
-			
-			return objArray[arrayIndex]; 
-		}
-		else
-		{
-			return null;
+			else
+			{
+//				logger.debug("Request " + index + " Not Found");
+				return null;
+			}
 		}
 	}
 	
@@ -214,5 +243,39 @@ public class LongObjectLRUCache
 		return KeyToArray.containsKey(index);
 	}
 
+	
+	public boolean checkQueue()
+	{
+
+		int queueSize = currSize.get();
+		// first check that if size > 1 that first and last are not equal.
+		if (queueSize > 1)
+		{
+			if (mFirstPtr == mLastPtr)
+			{
+				DebugPrint("First and Last");
+				return false;
+			}
+		}
+		
+		int start = mLastPtr;
+		int next = start;
+		
+		
+		for (int i = 0; i< queueSize - 1;i++)
+		{
+		
+			next = mLinks[next].next;
+			if (next == -1)
+			{
+				DebugPrint("Couldnt follow list");
+				return false;
+			}
+		}
+		
+		
+		return true;
+	}
+	
 	}
 			

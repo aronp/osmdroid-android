@@ -1,7 +1,7 @@
 // Created by plusminus on 17:58:57 - 25.09.2008
 package org.andnav.osm.views.util;
 
-import org.andnav.osm.tileprovider.LongObjectQueue;
+import org.andnav.osm.tileprovider.LongObjectLRUCache;
 import org.andnav.osm.tileprovider.OpenStreetMapTile;
 import org.andnav.osm.views.util.constants.OpenStreetMapViewConstants;
 
@@ -23,7 +23,7 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 	// ===========================================================
 
 	// protected LRUMapTileCache mCachedTiles;
-	protected LongObjectQueue<Drawable> mCachedTiles; 
+	protected LongObjectLRUCache<Drawable> mCachedTiles; 
 	
 
 	// ===========================================================
@@ -38,7 +38,7 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 	 * @param aMaximumCacheSize Maximum amount of MapTiles to be hold within.
 	 */
 	public OpenStreetMapTileCache(final int aMaximumCacheSize){
-		this.mCachedTiles = new LongObjectQueue<Drawable>(aMaximumCacheSize);
+		this.mCachedTiles = new LongObjectLRUCache<Drawable>(aMaximumCacheSize);
 	}
 
 	// ===========================================================
@@ -55,7 +55,7 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 
 	public synchronized void putTile(final OpenStreetMapTile aTile, final Drawable aDrawable) {
 		if (aDrawable != null) {
-			this.mCachedTiles. put(aTile.getTileId(), aDrawable);
+			this.mCachedTiles.put(aTile.getTileId(), aDrawable);
 		}
 	}
 

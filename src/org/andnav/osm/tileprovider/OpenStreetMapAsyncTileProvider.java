@@ -198,13 +198,13 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		 */
 		public void tileLoaded(final OpenStreetMapTile aTile, final String aTilePath) {
 
-			// put in the cache before removing from working queue.
-			mCallback.mapTileRequestCompleted(aTile, aTilePath);
 
 			synchronized (mPending) {
 				mPending.remove(aTile);
 			}
 			mWorking.remove(aTile);
+
+			mCallback.mapTileRequestCompleted(aTile, aTilePath);
 
 		}
 
@@ -215,13 +215,13 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		 */
 		public void tileLoaded(final OpenStreetMapTile aTile, final InputStream aTileInputStream) {
 
-			// put in the cache before removing from working queue.
-			mCallback.mapTileRequestCompleted(aTile, aTileInputStream);
 			
 			synchronized (mPending) {
 				mPending.remove(aTile);
 			}
 			mWorking.remove(aTile);
+
+			mCallback.mapTileRequestCompleted(aTile, aTileInputStream);
 
 		}
 
@@ -232,8 +232,6 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		 */
 		public void tileLoaded(final OpenStreetMapTile aTile, final boolean aRefresh) {
 			
-			// put in the cache before removing from working queue.
-			mCallback.mapTileRequestCompleted(aTile);
 
 			synchronized (mPending) {
 
@@ -241,6 +239,7 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 			}
 			mWorking.remove(aTile);
 
+			mCallback.mapTileRequestCompleted(aTile);
 		}
 
 		/**
@@ -250,14 +249,14 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		 */
 		public void tileLoaded(final OpenStreetMapTile aTile, final Drawable aDrawable) {
 
-			// put in the cache before removing from working queue.
-			mCallback.mapTileRequestCompleted(aTile, aDrawable);
 
 			synchronized (mPending) {
 
 				mPending.remove(aTile);
 			}
 			mWorking.remove(aTile);
+
+			mCallback.mapTileRequestCompleted(aTile, aDrawable);
 
 		}
 
