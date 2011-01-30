@@ -1,6 +1,7 @@
 // Created by plusminus on 17:45:56 - 25.09.2008
 package org.andnav.osm.views;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -121,6 +122,10 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private BoundingBoxE6 mBoundingBox = new BoundingBoxE6(0,0,0,0);
 	private int[] mIntArray = new int[2];
 
+	public double sumx = 0f;
+	public double sumx2 = 0f;
+	public double numsum = 0f;
+	
 	// ===========================================================
 	// Constructors
 	// ===========================================================
@@ -374,7 +379,6 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		final int[] coords = Mercator.projectGeoPoint(aLatitudeE6, aLongitudeE6, getPixelZoomLevel(), null);
 		final int worldSize_2 = getWorldSizePx()/2;
 		if (getAnimation() == null || getAnimation().hasEnded()) {
-			logger.debug("StartScroll");
 			mScroller.startScroll(getScrollX(), getScrollY(),
 					coords[MAPTILE_LONGITUDE_INDEX] - worldSize_2 - getScrollX(),
 					coords[MAPTILE_LATITUDE_INDEX] - worldSize_2 - getScrollY(), 500);
@@ -393,6 +397,23 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		this.checkZoomButtons();
 		this.setZoomLevel(mZoomLevel); // revalidate zoom level
 		postInvalidate();
+	}
+	
+	public void printStats()
+	{
+		DecimalFormat df = new DecimalFormat("#.####");
+		if (numsum > 0)
+		{
+			logger.debug("Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt(((sumx2/numsum) -(sumx/numsum)*(sumx/numsum)))/numsum));
+		}
+	}
+
+	
+	public void resetStats()
+	{
+		sumx = 0f;
+		sumx2 = 0f;
+		numsum = 0f;
 	}
 
 	/**
@@ -764,6 +785,11 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		final long endMs = System.currentTimeMillis();
 		if (DEBUGMODE)
 			logger.debug("Rendering overall: " + (endMs - startMs) + "ms");
+		
+		double time = (endMs - startMs)/1000;
+		this.sumx += time;
+		this.sumx2 += time*time;
+		this.numsum += 1;
 	}
 
 	@Override
