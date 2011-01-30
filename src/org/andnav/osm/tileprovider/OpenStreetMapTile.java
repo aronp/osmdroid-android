@@ -14,6 +14,18 @@ public class OpenStreetMapTile {
 	public static final int MAPTILE_SUCCESS_ID = 0;
 	public static final int MAPTILE_FAIL_ID = MAPTILE_SUCCESS_ID + 1;
 
+	static final long zoomBits = 5;
+	static final long yBits = 20;
+	static final long xBits = 20;
+	static final long ySignBit = 1;
+	static final long xSignBit = 1;
+	static final long maskZoom = (1L << zoomBits) -1 ;
+	static final long ymask = ((1L << yBits) -1) *(1L << zoomBits);
+	static final long xmask = ((1L << xBits) -1) *(1L << (zoomBits+yBits));
+	static final long ysignmask = (1L << (zoomBits+yBits+xBits));
+	static final long xsignmask = ysignmask << 1L;
+
+	
 	// This class must be immutable because it's used as the key in the cache hash map
 	// (ie all the fields are final).
 	private  IOpenStreetMapRendererInfo renderer;
@@ -75,6 +87,43 @@ public class OpenStreetMapTile {
 		code *= 37 + renderer.hashCode();
 		code *= 37 + zoomLevel;
 		return code;
+	}
+	public long getTileId()
+	{
+		return getTileId(x,y,zoomLevel);
+	}
+
+	public static long getTileId(int x, int y, int zoom)
+	{
+		long retval = 0;
+		long absx;
+		long absy;
+		long numMask = ((1 << zoom) -1L);
+
+		if (x < 0)
+		{
+			absx = (-x) & numMask;
+			retval = retval | xsignmask;
+		}
+		else
+		{
+			absx = x & numMask;
+		}
+
+		if (y < 0)
+		{
+			absy = (-y) & numMask;
+			retval = retval | ysignmask;
+		}
+		else
+		{
+			absy = y & numMask;
+		}
+
+		retval = retval | ((zoom & maskZoom) | ((absy << zoomBits) ) | (((absx << (zoomBits+yBits)) )));
+
+
+		return retval;
 	}
 
 	// TODO implement equals and hashCode in renderer
