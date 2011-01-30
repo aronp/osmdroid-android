@@ -401,10 +401,10 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	
 	public void printStats()
 	{
-		DecimalFormat df = new DecimalFormat("#.####");
+		DecimalFormat df = new DecimalFormat("#.#####");
 		if (numsum > 0)
 		{
-			logger.debug("Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt(((sumx2/numsum) -(sumx/numsum)*(sumx/numsum)))/numsum));
+			logger.debug("Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt( ((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))/numsum )));
 		}
 	}
 
@@ -786,7 +786,7 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		if (DEBUGMODE)
 			logger.debug("Rendering overall: " + (endMs - startMs) + "ms");
 		
-		double time = (endMs - startMs)/1000;
+		double time = (endMs - startMs)/1000f;
 		this.sumx += time;
 		this.sumx2 += time*time;
 		this.numsum += 1;
