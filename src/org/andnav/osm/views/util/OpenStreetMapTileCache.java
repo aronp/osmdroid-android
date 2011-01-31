@@ -27,7 +27,7 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 	public TimingStats getStats = new TimingStats("CacheGet");
 
 
-	private final boolean DEBUG_STATS = true;
+	private final boolean DEBUG_STATS = false;
 	
 	// ===========================================================
 	// Constructors
