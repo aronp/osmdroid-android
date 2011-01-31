@@ -34,7 +34,7 @@ public class OpenStreetMapTilesOverlay extends OpenStreetMapViewOverlay {
 	protected IOpenStreetMapRendererInfo mRendererInfo;
 
 	/** Current renderer */
-	protected final OpenStreetMapTileProvider mTileProvider;
+	public final OpenStreetMapTileProvider mTileProvider;
 	protected final Paint mPaint = new Paint();
 	protected final int extraTiles = 0;
 

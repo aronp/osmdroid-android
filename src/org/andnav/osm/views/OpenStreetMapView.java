@@ -27,6 +27,7 @@ import org.andnav.osm.views.util.Mercator;
 import org.andnav.osm.views.util.OpenStreetMapRendererFactory;
 import org.andnav.osm.views.util.OpenStreetMapTileProvider;
 import org.andnav.osm.views.util.OpenStreetMapTileProviderDirect;
+import org.andnav.osm.views.util.TimingStats;
 import org.andnav.osm.views.util.constants.OpenStreetMapViewConstants;
 import org.metalev.multitouch.controller.MultiTouchController;
 import org.metalev.multitouch.controller.MultiTouchController.MultiTouchObjectCanvas;
@@ -56,7 +57,6 @@ import android.view.GestureDetector.OnGestureListener;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
 import android.view.animation.ScaleAnimation;
@@ -122,6 +122,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private BoundingBoxE6 mBoundingBox = new BoundingBoxE6(0,0,0,0);
 	private int[] mIntArray = new int[2];
 
+
+	public TimingStats mStats = new TimingStats("View");
 	public double sumx = 0f;
 	public double sumx2 = 0f;
 	public double numsum = 0f;
@@ -401,11 +403,7 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	
 	public void printStats()
 	{
-		DecimalFormat df = new DecimalFormat("#.#####");
-		if (numsum > 0)
-		{
-			logger.debug("Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt( ((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))/numsum )));
-		}
+		mMapOverlay.mTileProvider.mTileCache.getStats.OutputStats();
 	}
 
 	
