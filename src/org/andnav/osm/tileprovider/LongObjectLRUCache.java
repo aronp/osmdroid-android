@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import gnu.trove.map.hash.TLongIntHashMap;
+import gnu.trove.set.TLongSet;
 
 public class LongObjectLRUCache<T> 
 {
@@ -22,17 +23,6 @@ public class LongObjectLRUCache<T>
 	int mLastPtr = -1;
 	AtomicInteger currSize = new AtomicInteger(0);
 
-	boolean linkValid(int link)
-	{
-		return (link >= 0);
-	}
-	
-	@SuppressWarnings("hiding")
-	class links<T> 
-	{
-		int prev = -1;
-		int next = -1;
-	};
 
 	@SuppressWarnings("unchecked")
 	public LongObjectLRUCache(int size)
@@ -277,5 +267,93 @@ public class LongObjectLRUCache<T>
 		return true;
 	}
 	
+	boolean linkValid(int link)
+	{
+		return (link >= 0);
 	}
+	
+	@SuppressWarnings("hiding")
+	class links<T> 
+	{
+		int prev = -1;
+		int next = -1;
+	}
+
+	public boolean isEmpty() {
+		return (this.KeyToArray.size() == 0);
+	}
+
+	public void clear() 
+	{
+		synchronized(this)
+		{
+			int currentSize = currSize.get();
+			for (int i =0; i< currentSize;i++)
+			{
+				objArray[i] = null;
+				arrayToKey[i] = -1;
+				mLinks[i].next =  -1;
+				mLinks[i].prev =  -1;
+			}
+			KeyToArray.clear();
+			mFirstPtr = -1;
+			mLastPtr = -1;
+			currSize.set(0);
+		}
+	}
+
+	public TLongSet keySet() {
+		return KeyToArray.keySet();
+	}
+
+	public int size() {
+		return currSize.get();
+	}
+
+	@SuppressWarnings("unchecked")
+	public void remove(long key) {
+		
+		// first find index of original
+		int index = KeyToArray.get(key);
+		if (index < 0)
+			return;
+		
+		synchronized(this)
+		{
+		// link up either side.
+			links curr = mLinks[index];
+			if (linkValid(curr.prev))
+				mLinks[curr.prev].next = curr.next;
+
+			if (linkValid(curr.next))
+				mLinks[curr.next].prev = curr.prev;
+
+			// move last element here.
+			int lastElement = currSize.get()-1;
+			
+			// greater than since we dont need to move if only one row. 
+			if (lastElement > 0)
+			{
+				links endLink = mLinks[lastElement];
+
+				if (linkValid(endLink.prev))
+				{
+					mLinks[endLink.prev].next = index;
+				}
+
+				if (linkValid(endLink.next))
+				{
+					mLinks[endLink.next].prev = index;
+				}
+				objArray[index] = objArray[lastElement];
+				arrayToKey[index] = arrayToKey[lastElement];
+				KeyToArray.put(arrayToKey[lastElement], index);
+			}
+			KeyToArray.remove(key);
+			currSize.getAndDecrement();
+		}
+		
+		
+	}
+}
 			
