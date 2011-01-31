@@ -13,11 +13,11 @@ public class TimingStats {
 	public double max;
 	public double min;
 	
-	private double startSecs;
-	private double endSecs;
+	private long startMs;
+	private double endMs;
 	private final String mName;
 
-	private static DecimalFormat df = new DecimalFormat("#.######");
+	private static DecimalFormat df = new DecimalFormat("#.#######");
 
 	private static final Logger logger = LoggerFactory.getLogger(TimingStats.class);
 
@@ -38,15 +38,15 @@ public class TimingStats {
 	
 	public void start()
 	{
-		startSecs = System.currentTimeMillis()/1000f;
+		startMs = System.currentTimeMillis();
 	}
 
 
 	public void stop()
 	{
-		endSecs = System.currentTimeMillis()/1000f;
+		endMs = System.currentTimeMillis();
 		
-		double time = endSecs - startSecs;
+		double time = (endMs - startMs)/1000f;
 		sumx += time;
 		sumx2 += time*time;
 		numsum += 1;
@@ -56,7 +56,7 @@ public class TimingStats {
 	{
 		if (numsum > 0)
 		{
-			logger.debug(mName + ": Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt( ((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))/numsum )));
+			logger.debug(mName + ": Average time " +df.format((sumx/numsum))+ " std " + df.format(Math.sqrt((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))) + " Num " + numsum + " Mean +- "+  df.format(Math.sqrt( ((sumx2/numsum) -(sumx/numsum)*(sumx/numsum))/numsum )) +" Total Time :" + sumx);
 		}
 	}
 }

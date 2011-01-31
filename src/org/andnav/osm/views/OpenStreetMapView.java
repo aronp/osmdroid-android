@@ -123,10 +123,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private int[] mIntArray = new int[2];
 
 
-	public TimingStats mStats = new TimingStats("View");
-	public double sumx = 0f;
-	public double sumx2 = 0f;
-	public double numsum = 0f;
+	public TimingStats mViewStats = new TimingStats("ViewStats");
+	private final boolean DEBUG_STATS = true;
 	
 	// ===========================================================
 	// Constructors
@@ -403,15 +401,14 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	
 	public void printStats()
 	{
+		mViewStats.OutputStats();
 		mMapOverlay.mTileProvider.mTileCache.getStats.OutputStats();
 	}
 
 	
 	public void resetStats()
 	{
-		sumx = 0f;
-		sumx2 = 0f;
-		numsum = 0f;
+		mViewStats.reset();
 	}
 
 	/**
@@ -743,8 +740,9 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 
 	@Override
 	public void onDraw(final Canvas c) {
-		final long startMs = System.currentTimeMillis();
-
+		if (DEBUG_STATS)
+			mViewStats.start();
+		
 		mProjection = new OpenStreetMapViewProjection();
 
 		if (mMultiTouchScale == 1.0f) {
@@ -780,14 +778,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 			c.drawRect(0, 0, viewWidth, viewHeight, this.mPaint);
 		}
 
-		final long endMs = System.currentTimeMillis();
-		if (DEBUGMODE)
-			logger.debug("Rendering overall: " + (endMs - startMs) + "ms");
-		
-		double time = (endMs - startMs)/1000f;
-		this.sumx += time;
-		this.sumx2 += time*time;
-		this.numsum += 1;
+		if (DEBUG_STATS)
+			mViewStats.stop();
 	}
 
 	@Override
