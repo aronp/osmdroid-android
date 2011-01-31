@@ -29,9 +29,8 @@ public abstract class OpenStreetMapTileProvider implements OpenStreetMapViewCons
 
 	private static final Logger logger = LoggerFactory.getLogger(OpenStreetMapTileProvider.class);
 
-	// protected final OpenStreetMapTileCache mTileCache;
-	protected OpenStreetMapTileCache mTileCache;
-	
+	public final OpenStreetMapTileCache mTileCache;
+
 	protected final Handler mDownloadFinishedHandler;
 	protected boolean mUseDataConnection = true;
 

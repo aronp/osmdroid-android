@@ -24,8 +24,11 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 
 	// protected LRUMapTileCache mCachedTiles;
 	protected LongObjectLRUCache<Drawable> mCachedTiles; 
-	
+	public TimingStats getStats = new TimingStats("CacheGet");
 
+
+	private final boolean DEBUG_STATS = false;
+	
 	// ===========================================================
 	// Constructors
 	// ===========================================================
@@ -50,7 +53,19 @@ public final class OpenStreetMapTileCache implements OpenStreetMapViewConstants
 	}
 
 	public synchronized Drawable getMapTile(final OpenStreetMapTile aTile) {
-		return this.mCachedTiles.get(aTile.getTileId());
+
+		if (DEBUG_STATS)
+			getStats.start();
+
+		Drawable retval =  this.mCachedTiles.get(aTile.getTileId());
+
+		if (DEBUG_STATS)
+			getStats.stop();
+
+		return retval;
+
+
+//		return this.mCachedTiles.get(aTile.getTileId());
 	}
 
 	public synchronized void putTile(final OpenStreetMapTile aTile, final Drawable aDrawable) {

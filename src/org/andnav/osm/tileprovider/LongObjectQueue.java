@@ -3,6 +3,7 @@ package org.andnav.osm.tileprovider;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import gnu.trove.map.hash.TLongIntHashMap;
+import gnu.trove.set.TLongSet;
 
 public class LongObjectQueue<T> {
 	
@@ -14,7 +15,6 @@ public class LongObjectQueue<T> {
 	
 	public LongObjectQueue(int size)
 	{
-		size = 100;
 		objArray = new Object [size];
 		arrayToKey = new long [size];
 		KeyToArray = new TLongIntHashMap(size, 0.7f,-1,-1);
@@ -26,12 +26,10 @@ public class LongObjectQueue<T> {
 		this(100);
 	}
 	
-	public void ensureCapacity(int newSize)
+	public synchronized void ensureCapacity(int newSize)
 	{
 		if (newSize > mSize)
 		{
-			synchronized(this)
-			{
 				Object [] newArray = new Object [newSize];
 				long [] newarrayToKey = new long[newSize];
 
@@ -43,7 +41,6 @@ public class LongObjectQueue<T> {
 				objArray = newArray;
 				arrayToKey = newarrayToKey;
 				mSize = newSize;
-			}
 		}
 	}
 
@@ -65,10 +62,8 @@ public class LongObjectQueue<T> {
 		objArray[myPointer] = obj;
 	}
 	
-	public void put(long index, T obj)
+	public synchronized void put(long index, T obj)
 	{
-		synchronized (this) 
-		{
 			int arrayOffset = KeyToArray.get(index);
 			
 			if (arrayOffset >= 0)
@@ -79,16 +74,15 @@ public class LongObjectQueue<T> {
 			{
 				putNew(index, obj);
 			}
-		}
 	}
 	
-	public boolean containsKey(long index)
+	public synchronized boolean containsKey(long index)
 	{
 		return KeyToArray.containsKey(index);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public T get(long index)
+	public synchronized T get(long index)
 	{
 		Object obj;
 		int arrayOffset = KeyToArray.get(index);
@@ -101,6 +95,17 @@ public class LongObjectQueue<T> {
 			obj = null;
 		}
 		return   (T)obj;
+	}
+
+	public synchronized TLongSet  keySet() {
+		// TODO need to check
+		return KeyToArray.keySet();
+	}
+
+	public synchronized void clear() {
+		// TODO need to check clear.
+		KeyToArray.clear();
+		currFreePointer.set(0);
 	}
 
 }

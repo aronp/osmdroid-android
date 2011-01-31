@@ -125,6 +125,36 @@ public class OpenStreetMapTile {
 
 		return retval;
 	}
+	
+	public static int decodeTileX(long tileId)
+	{
+		long x =  (((tileId & xmask) >>> (zoomBits + yBits)));
+
+		if ((tileId & xsignmask) != 0)
+		{
+			x = -x;
+		}
+
+		return (int)x;
+	}
+
+	public static int decodeTileY(long tileId)
+	{
+		long y =  (((tileId & ymask) >>> zoomBits));
+
+		if ((tileId & ysignmask) != 0)
+		{
+			y = -y;
+		}
+
+		return (int)y;
+	}
+
+	public static int decodeTileZoom(long tileId)
+	{
+		int zoom = (int) (tileId & maskZoom);
+		return zoom;
+	}
 
 	// TODO implement equals and hashCode in renderer
 

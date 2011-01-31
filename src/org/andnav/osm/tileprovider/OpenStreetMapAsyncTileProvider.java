@@ -1,14 +1,14 @@
 package org.andnav.osm.tileprovider;
 
+import gnu.trove.iterator.TLongIterator;
+import gnu.trove.map.hash.TLongObjectHashMap;
+
 import java.io.InputStream;
 import java.util.ConcurrentModificationException;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 import org.andnav.osm.tileprovider.constants.OpenStreetMapTileProviderConstants;
+import org.andnav.osm.views.util.IOpenStreetMapRendererInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,11 +48,12 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 	protected static final Logger logger = LoggerFactory.getLogger(OpenStreetMapAsyncTileProvider.class);
 
-	private final int mThreadPoolSize;
-	protected int mCurrentThreadPoolSize;
+	protected final ThreadGroup mThreadPool = new ThreadGroup(threadGroupName());
+	// protected final ConcurrentHashMap<OpenStreetMapTile, Object> mWorking;
+	protected final TLongObjectHashMap<IOpenStreetMapRendererInfo> mWorking;
+	// protected final LinkedHashMap<OpenStreetMapTile, Object> mPending;
+	protected final LongObjectLRUCache<IOpenStreetMapRendererInfo> mPending;
 	
-	protected final ConcurrentHashMap<OpenStreetMapTile, Object> mWorking;
-	protected final LinkedHashMap<OpenStreetMapTile, Object> mPending;
 	protected static final Object PRESENT = new Object();
 
 	protected final IOpenStreetMapTileProviderCallback mCallback;
@@ -60,17 +61,19 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 	public OpenStreetMapAsyncTileProvider(final IOpenStreetMapTileProviderCallback pCallback, final int aThreadPoolSize, final int aPendingQueueSize) 
 	{
 		mCallback = pCallback;
-		mThreadPoolSize = aThreadPoolSize;
-		
-		mCurrentThreadPoolSize = aThreadPoolSize;
-		mWorking = new ConcurrentHashMap<OpenStreetMapTile, Object>(aPendingQueueSize);
-		mPending = new LinkedHashMap<OpenStreetMapTile, Object>(aPendingQueueSize + 2, 0.1f, true) {
-			private static final long serialVersionUID = 6455337315681858866L;
-			@Override
-			protected boolean removeEldestEntry(Entry<OpenStreetMapTile, Object> pEldest) {
-				return size() > aPendingQueueSize;
-			}
-		};
+		//mWorking = new ConcurrentHashMap<OpenStreetMapTile, Object>();
+		mWorking = new TLongObjectHashMap<IOpenStreetMapRendererInfo>();
+//		mPending = new LinkedHashMap<OpenStreetMapTile, Object>(aPendingQueueSize + 2, 0.1f, true) 
+//		{
+//			private static final long serialVersionUID = 6455337315681858866L;
+//			@Override
+//			protected boolean removeEldestEntry(Entry<OpenStreetMapTile, Object> pEldest) {
+//				return size() > aPendingQueueSize;
+//			}
+//		};
+
+		mPending = new LongObjectLRUCache<IOpenStreetMapRendererInfo>(aPendingQueueSize); 
+
 	}
 
 	public void loadMapTileAsync(final OpenStreetMapTile aTile) {
@@ -80,8 +83,8 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		synchronized (mPending) {
 			// sanity check
 			if (activeCount == 0 && !mPending.isEmpty()) {
-//				logger.warn("Unexpected - no active threads but pending queue not empty");
-//				
+				logger.warn("Unexpected - no active threads but pending queue not empty");
+				
 //				for (OpenStreetMapTile tile : mPending.keySet())
 //				{
 //					logger.warn("Still in queue" + tile.toString());
@@ -96,7 +99,7 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 			// this will put the tile in the queue, or move it to the front of
 			// the queue if it's already present
-			mPending.put(aTile, PRESENT);
+			mPending.put(aTile.getTileId(), aTile.getRenderer());
 		}
 
 		if (DEBUGMODE)
@@ -104,6 +107,11 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 		ExecutorService ex = this.getExecutorService();
 		ex.execute(getTileLoader());
+
+//		if (activeCount < mThreadPoolSize) {
+//			final Thread t = new Thread(mThreadPool, getTileLoader());
+//			t.start();
+//		}
 	}
 
 	private void clearQueue() {
@@ -137,33 +145,35 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		/**
 		 * The key unimplemented method.
 		 * 
-		 * @param aTile
+		 * @param tileId
 		 * @throws CantContinueException
 		 */
-		protected abstract void loadTile(OpenStreetMapTile aTile) throws CantContinueException;
+		protected abstract void loadTile(long tileId, IOpenStreetMapRendererInfo renderer) throws CantContinueException;
 
-		private OpenStreetMapTile nextTile() {
+		private long nextTile() {
 
 			synchronized (mPending) {
-				OpenStreetMapTile result = null;
+				long result = -1;
+				boolean found = false;
 
 				// get the most recently accessed tile
 				// - the last item in the iterator that's not already being processed
-				Iterator<OpenStreetMapTile> iterator = mPending.keySet().iterator();
+				TLongIterator iterator = mPending.keySet().iterator();
 
 				// TODO this iterates the whole list, make this faster...
 				while (iterator.hasNext()) {
 					try {
-						final OpenStreetMapTile tile = iterator.next();
-						if (!mWorking.containsKey(tile)) {
-							result = tile;
+						final long tileId = iterator.next();
+						if (!mWorking.containsKey(tileId)) {
+							result = tileId;
+							found = true;
 						}
 					} catch (final ConcurrentModificationException e) {
 						if (DEBUGMODE)
-							logger.warn("ConcurrentModificationException break: " + (result != null));
+							logger.warn("ConcurrentModificationException break: " + (found));
 
 						// if we've got a result return it, otherwise try again
-						if (result != null) {
+						if (found) {
 							break;
 						} else {
 							iterator = mPending.keySet().iterator();
@@ -171,12 +181,12 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 					}
 				}
 
-				if (result != null)
+				if (found)
 				{
-					mWorking.put(result, PRESENT);
+					mWorking.put(result, mPending.get(result));
 				}
 
-				if (result == null)
+				if (!found)
 				{
 					// need to do some checking see if this is working.
 					if (DEBUGMODE)
@@ -200,9 +210,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 
 			synchronized (mPending) {
-				mPending.remove(aTile);
+				mPending.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aTilePath);
 
@@ -217,9 +227,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 			
 			synchronized (mPending) {
-				mPending.remove(aTile);
+				mPending.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aTileInputStream);
 
@@ -234,10 +244,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 			
 
 			synchronized (mPending) {
-
-				mPending.remove(aTile);
+				mPending.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile);
 		}
@@ -251,10 +260,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 
 			synchronized (mPending) {
-
-				mPending.remove(aTile);
+				mPending.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aDrawable);
 
@@ -270,7 +278,7 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 			if (DEBUGMODE)
 				logger.debug("Got a tile not loaded");
 			
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 		}
 		
 		/**
@@ -282,9 +290,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		public void tilePassedOn(final OpenStreetMapTile aTile) 
 		{
 			synchronized (mPending) {
-				mPending.remove(aTile);
+				mPending.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile);
+			mWorking.remove(aTile.getTileId());
 		}
 
 		
@@ -296,23 +304,20 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		@Override
 		final public void run() {
 
-			OpenStreetMapTile tile;
+			long tileId;
 			boolean okay = true;
 			
-			while ((tile = nextTile()) != null && okay) {
+			while ((tileId = nextTile()) != -1 && okay) {
 				if (DEBUGMODE)
-					logger.debug("Next tile: " + tile);
+					logger.debug("Next tile: " + tileId);
 				try {
-					loadTile(tile);
+					loadTile(tileId, mPending.get(tileId));
 					// got a tile so back up and running
-					mCurrentThreadPoolSize = mThreadPoolSize;
 				} catch (final CantContinueException e) {
 					logger.info("Tile loader can't continue", e);
-					mCurrentThreadPoolSize = 1;
 					sleep();
 				} catch (final Throwable e) {
-					logger.error("Error downloading tile: " + tile, e);
-					mCurrentThreadPoolSize = 1;
+					logger.error("Error downloading tile: " + tileId, e);
 					sleep();
 				}
 			}

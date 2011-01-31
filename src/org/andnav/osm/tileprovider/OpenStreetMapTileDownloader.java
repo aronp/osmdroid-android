@@ -13,6 +13,7 @@ import java.net.URL;
 import java.net.UnknownHostException;
 
 import org.andnav.osm.tileprovider.util.CloudmadeUtil;
+import org.andnav.osm.views.util.IOpenStreetMapRendererInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,10 +87,16 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 	private class TileLoader extends OpenStreetMapAsyncTileProvider.TileLoader {
 
 		@Override
-		public void loadTile(final OpenStreetMapTile aTile) throws CantContinueException {
+		protected void loadTile(final long tileId, final IOpenStreetMapRendererInfo renderer) throws CantContinueException {
 
 			InputStream in = null;
 			OutputStream out = null;
+			OpenStreetMapTile aTile = new OpenStreetMapTile(
+					renderer,
+					OpenStreetMapTile.decodeTileZoom(tileId),
+					OpenStreetMapTile.decodeTileX(tileId),
+					OpenStreetMapTile.decodeTileY(tileId));
+					
 
 			final File outputFile = mMapTileFSProvider.getOutputFile(aTile);
 
@@ -110,35 +117,35 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 
 				// sanity check - don't save an empty file
 				if (data.length == 0) {
-					logger.info("Empty maptile not saved: " + aTile);
+					logger.info("Empty maptile not saved: " + tileId);
 					tileNotLoaded(aTile);
 				} else {
 					mMapTileFSProvider.saveFile(aTile, outputFile, data);
 					tileLoaded(aTile, true);
 					if(DEBUGMODE)
-						logger.debug("Maptile saved " + data.length + " bytes : " + aTile);
+						logger.debug("Maptile saved " + data.length + " bytes : " + tileId);
 				}
 			} catch (final UnknownHostException e) {
 				// no network connection 
 				// no need to empty the queue, keep it
 				// for when we are connected.
-				logger.warn("UnknownHostException downloading MapTile: " + aTile + " : " + e);
+				logger.warn("UnknownHostException downloading MapTile: " + tileId + " : " + e);
 				tileNotLoaded(aTile);
 				throw new CantContinueException(e);
 			} catch(final FileNotFoundException e){
-				logger.warn("Tile not found: " + aTile+ " : " + e);
+				logger.warn("Tile not found: " + tileId+ " : " + e);
 				tileNotLoaded(aTile);
 				sleep();
 			} catch (final IOException e) {
-				logger.warn("IOException downloading MapTile: " + aTile + " : " + e);
+				logger.warn("IOException downloading MapTile: " + tileId + " : " + e);
 				tileNotLoaded(aTile);
 				throw new CantContinueException(e);
 			} catch (final CloudmadeException e) {
-				logger.warn("CloudmadeException downloading MapTile: " + aTile + " : " + e);
+				logger.warn("CloudmadeException downloading MapTile: " + tileId + " : " + e);
 				tileNotLoaded(aTile);
 				sleep();
 			} catch(final Throwable e) {
-				logger.error("Error downloading MapTile: " + aTile, e);
+				logger.error("Error downloading MapTile: " + tileId, e);
 				tileNotLoaded(aTile);
 				throw new CantContinueException(e);
 			} finally {
@@ -156,6 +163,7 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 			 */
 
 		}
+
 	}
 
 	@Override

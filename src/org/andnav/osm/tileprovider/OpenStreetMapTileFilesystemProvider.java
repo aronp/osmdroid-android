@@ -266,9 +266,16 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 		 * aTile a tile to be constructed by the method.
 		 */
 		@Override
-		public void loadTile(final OpenStreetMapTile aTile) throws CantContinueException {
+		public void loadTile(long tileId, IOpenStreetMapRendererInfo renderer) throws CantContinueException {
 
 			// if there's no sdcard then don't do anything
+			OpenStreetMapTile aTile = new OpenStreetMapTile(
+					renderer,
+					OpenStreetMapTile.decodeTileZoom(tileId),
+					OpenStreetMapTile.decodeTileX(tileId),
+					OpenStreetMapTile.decodeTileY(tileId));
+
+			
 			if (!mSdCardAvailable) {
 				if (DEBUGMODE)
 					logger.debug("No sdcard - do nothing for tile: " + aTile);

@@ -1,6 +1,7 @@
 // Created by plusminus on 17:45:56 - 25.09.2008
 package org.andnav.osm.views;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +27,7 @@ import org.andnav.osm.views.util.Mercator;
 import org.andnav.osm.views.util.OpenStreetMapRendererFactory;
 import org.andnav.osm.views.util.OpenStreetMapTileProvider;
 import org.andnav.osm.views.util.OpenStreetMapTileProviderDirect;
+import org.andnav.osm.views.util.TimingStats;
 import org.andnav.osm.views.util.constants.OpenStreetMapViewConstants;
 import org.metalev.multitouch.controller.MultiTouchController;
 import org.metalev.multitouch.controller.MultiTouchController.MultiTouchObjectCanvas;
@@ -55,7 +57,6 @@ import android.view.GestureDetector.OnGestureListener;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
 import android.view.animation.ScaleAnimation;
@@ -124,6 +125,10 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	private BoundingBoxE6 mBoundingBox = new BoundingBoxE6(0,0,0,0);
 	private int[] mIntArray = new int[2];
 
+
+	public TimingStats mViewStats = new TimingStats("ViewStats");
+	private final boolean DEBUG_STATS = true;
+	
 	// ===========================================================
 	// Constructors
 	// ===========================================================
@@ -395,6 +400,18 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		this.checkZoomButtons();
 		this.setZoomLevel(mZoomLevel); // revalidate zoom level
 		postInvalidate();
+	}
+	
+	public void printStats()
+	{
+		mViewStats.OutputStats();
+		mMapOverlay.mTileProvider.mTileCache.getStats.OutputStats();
+	}
+
+	
+	public void resetStats()
+	{
+		mViewStats.reset();
 	}
 
 	/**
@@ -726,7 +743,9 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 
 	@Override
 	public void onDraw(final Canvas c) {
-		final long startMs = System.currentTimeMillis();
+
+		if (DEBUG_STATS)
+			mViewStats.start();
 
 		if (mProjection == null)
 		{
@@ -770,9 +789,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 			c.drawRect(0, 0, viewWidth, viewHeight, this.mPaint);
 		}
 
-		final long endMs = System.currentTimeMillis();
-		if (DEBUGMODE)
-			logger.debug("Rendering overall: " + (endMs - startMs) + "ms");
+		if (DEBUG_STATS)
+			mViewStats.stop();
 	}
 
 	@Override
