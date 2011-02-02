@@ -23,23 +23,36 @@ public class BoundingBoxE6 implements OpenStreetMapViewConstants {
 	// Fields
 	// ===========================================================
 
-	protected final int mLatNorthE6;
-	protected final int mLatSouthE6;
-	protected final int mLonEastE6;
-	protected final int mLonWestE6;  
+	protected  int mLatNorthE6;
+	protected  int mLatSouthE6;
+	protected  int mLonEastE6;
+	protected  int mLonWestE6;  
 
 	// ===========================================================
 	// Constructors
 	// ===========================================================
 	
 	public BoundingBoxE6(final int northE6, final int eastE6, final int southE6, final int westE6){
+		setup(northE6, eastE6, southE6, westE6);
+	}
+	
+	public BoundingBoxE6(final double north, final double east, final double south, final double west){
+		this.mLatNorthE6 = (int)(north * 1E6);
+		this.mLonEastE6 = (int)(east * 1E6);
+		this.mLatSouthE6 = (int)(south * 1E6);
+		this.mLonWestE6 = (int)(west * 1E6);
+	}
+
+	public void setup(final int northE6, final int eastE6, final int southE6, final int westE6)
+	{
 		this.mLatNorthE6 = northE6;
 		this.mLonEastE6 = eastE6;
 		this.mLatSouthE6 = southE6;
 		this.mLonWestE6 = westE6;
 	}
-	
-	public BoundingBoxE6(final double north, final double east, final double south, final double west){
+
+	public void setup(final double north, final double east, final double south, final double west)
+	{
 		this.mLatNorthE6 = (int)(north * 1E6);
 		this.mLonEastE6 = (int)(east * 1E6);
 		this.mLatSouthE6 = (int)(south * 1E6);

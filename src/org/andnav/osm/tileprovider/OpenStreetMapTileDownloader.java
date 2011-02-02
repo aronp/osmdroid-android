@@ -64,12 +64,12 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 		return "downloader";
 	}
 
-	final TileLoader mTileLoader = new TileLoader();
+	// final TileLoader mTileLoader = new TileLoader();
 	
 	@Override
 	protected Runnable getTileLoader() {
 		// return new TileLoader();
-		return mTileLoader;
+		return new TileLoader();
 	};
 
 	// ===========================================================

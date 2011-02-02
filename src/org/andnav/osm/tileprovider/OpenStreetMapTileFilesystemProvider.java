@@ -38,7 +38,7 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	// Constants
 	// ===========================================================
 
-	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Files",NUMBER_OF_TILE_FILESYSTEM_THREADS );
+	static final OSMThreadFactory mThreadFactory = new OSMThreadFactory("Files",NUMBER_OF_TILE_FILESYSTEM_THREADS, Thread.NORM_PRIORITY-1 );
 	
 	
 	private static final Logger logger = LoggerFactory.getLogger(OpenStreetMapTileFilesystemProvider.class);
@@ -122,8 +122,8 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	
 	@Override
 	protected Runnable getTileLoader() {
-		return sTileLoader;
 		// return new TileLoader();
+		return sTileLoader;
 	};
 
 	@Override

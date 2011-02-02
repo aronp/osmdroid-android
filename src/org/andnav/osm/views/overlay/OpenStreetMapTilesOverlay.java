@@ -44,7 +44,8 @@ public class OpenStreetMapTilesOverlay extends OpenStreetMapViewOverlay {
 	
 	private final OpenStreetMapTile mTile;
 	protected boolean debug_draw = DEBUG_DRAW;
-
+	protected boolean draw_grid = true;
+	
 	public OpenStreetMapTilesOverlay(
 			final OpenStreetMapView aOsmv,
 			final IOpenStreetMapRendererInfo aRendererInfo,
@@ -149,6 +150,21 @@ public class OpenStreetMapTilesOverlay extends OpenStreetMapViewOverlay {
 				if (currentMapTile != null) {
 					currentMapTile.setBounds(mTilePos.x, mTilePos.y, mTilePos.x + tileSizePx, mTilePos.y + tileSizePx);
 					currentMapTile.draw(c);
+				}
+				else
+				{
+					// draw background
+//					c.drawLine(mTilePos.x, mTilePos.y, mTilePos.x + tileSizePx, mTilePos.y, mPaint);
+//					c.drawLine(mTilePos.x, mTilePos.y, mTilePos.x, mTilePos.y + tileSizePx, mPaint);
+					if (draw_grid)
+					{
+						int ypos = mTilePos.y + tileSizePx/2;
+						int xpos = mTilePos.x + tileSizePx/2;
+
+						c.drawLine(mTilePos.x, ypos, mTilePos.x + tileSizePx, ypos, mPaint);
+						c.drawLine(xpos, mTilePos.y, xpos, mTilePos.y + tileSizePx, mPaint);
+					}
+
 				}
 
 				if (debug_draw) {

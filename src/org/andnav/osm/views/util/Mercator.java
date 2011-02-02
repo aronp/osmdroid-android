@@ -101,10 +101,24 @@ public class Mercator implements OpenStreetMapViewConstants {
 	 * @param zoom
 	 * @return
 	 */
-	public static BoundingBoxE6 getBoundingBoxFromCoords(final int left, final int top, final int right, final int bottom, final int zoom) {
+	public static BoundingBoxE6 getBoundingBoxFromCoords(final int left, final int top, final int right, final int bottom, final int zoom) 
+	{
 		return new BoundingBoxE6(tile2lat(top, zoom), tile2lon(right, zoom), tile2lat(bottom, zoom), tile2lon(left, zoom));
 	}
 
+	public static BoundingBoxE6 getBoundingBoxFromCoords(final int left, final int top, final int right, final int bottom, final int zoom, BoundingBoxE6 reuse) 
+	{
+		if (reuse == null)
+		{
+		return new BoundingBoxE6(tile2lat(top, zoom), tile2lon(right, zoom), tile2lat(bottom, zoom), tile2lon(left, zoom));
+		}
+		else
+		{
+			reuse.setup(tile2lat(top, zoom), tile2lon(right, zoom), tile2lat(bottom, zoom), tile2lon(left, zoom));
+			return reuse;
+		}
+	}
+	
 	/**
 	 * Get bounding box from reverse Mercator projection.
 	 * @param aMapTile

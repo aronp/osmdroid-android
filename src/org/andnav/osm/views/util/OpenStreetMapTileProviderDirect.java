@@ -44,7 +44,7 @@ public class OpenStreetMapTileProviderDirect extends OpenStreetMapTileProvider i
 		} else {
 			if (DEBUGMODE)
 				logger.debug("Cache failed, trying from FS: " + pTile);
-			mFileSystemProvider.loadMapTileAsync(pTile.clone());
+			mFileSystemProvider.loadMapTileAsync(pTile);
 			return null;
 		}
 	}

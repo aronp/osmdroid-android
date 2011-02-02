@@ -11,8 +11,13 @@ public class OSMThreadFactory {
 	public final ExecutorService mExeServicenew;
 	public final int mNumber;
 	public final String mName;
-	
+
 	public OSMThreadFactory(final String name, int number)
+	{
+		this(name, number, Thread.MIN_PRIORITY);
+	}
+	
+	public OSMThreadFactory(final String name, int number, final int priority)
 	{
 		mDefaultThreadFactory =
 			new ThreadFactory() {
@@ -20,7 +25,7 @@ public class OSMThreadFactory {
 
 	        public Thread newThread(Runnable r) {
 	        	Thread t =new Thread(mThreadPool, r, name+ "#" + mCount.getAndIncrement()); 
-	        	t.setPriority(Thread.NORM_PRIORITY-1);
+	        	t.setPriority(priority);
 	            return t;
 	        }
 	    };
@@ -33,6 +38,7 @@ public class OSMThreadFactory {
 	    mName = name;
 	}
 
+	
 	public int numThreads()
 	{
 		return mNumber;

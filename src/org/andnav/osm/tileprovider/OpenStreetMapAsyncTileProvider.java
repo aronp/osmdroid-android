@@ -1,10 +1,8 @@
 package org.andnav.osm.tileprovider;
 
-import gnu.trove.iterator.TLongIterator;
 import gnu.trove.map.hash.TLongObjectHashMap;
 
 import java.io.InputStream;
-import java.util.ConcurrentModificationException;
 import java.util.concurrent.ExecutorService;
 
 import org.andnav.osm.tileprovider.constants.OpenStreetMapTileProviderConstants;
@@ -52,7 +50,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 	// protected final ConcurrentHashMap<OpenStreetMapTile, Object> mWorking;
 	protected final TLongObjectHashMap<IOpenStreetMapRendererInfo> mWorking;
 	// protected final LinkedHashMap<OpenStreetMapTile, Object> mPending;
-	protected final LongObjectLRUCache<IOpenStreetMapRendererInfo> mPending;
+	// protected final LongObjectLRUCache<IOpenStreetMapRendererInfo> mPending;
+	protected final LongObjectLRUCache<IOpenStreetMapRendererInfo> mWaiting;
+	
 	
 	protected static final Object PRESENT = new Object();
 
@@ -61,18 +61,10 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 	public OpenStreetMapAsyncTileProvider(final IOpenStreetMapTileProviderCallback pCallback, final int aThreadPoolSize, final int aPendingQueueSize) 
 	{
 		mCallback = pCallback;
-		//mWorking = new ConcurrentHashMap<OpenStreetMapTile, Object>();
 		mWorking = new TLongObjectHashMap<IOpenStreetMapRendererInfo>();
-//		mPending = new LinkedHashMap<OpenStreetMapTile, Object>(aPendingQueueSize + 2, 0.1f, true) 
-//		{
-//			private static final long serialVersionUID = 6455337315681858866L;
-//			@Override
-//			protected boolean removeEldestEntry(Entry<OpenStreetMapTile, Object> pEldest) {
-//				return size() > aPendingQueueSize;
-//			}
-//		};
 
-		mPending = new LongObjectLRUCache<IOpenStreetMapRendererInfo>(aPendingQueueSize); 
+		// mPending = new LongObjectLRUCache<IOpenStreetMapRendererInfo>(aPendingQueueSize); 
+		mWaiting = new LongObjectLRUCache<IOpenStreetMapRendererInfo>(aPendingQueueSize); 
 
 	}
 
@@ -80,27 +72,23 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 		final int activeCount = getOSMThreadFactory().numberActive();
 
-		synchronized (mPending) {
 			// sanity check
-			if (activeCount == 0 && !mPending.isEmpty()) {
+			if (activeCount == 0 && !mWaiting.isEmpty()) {
 				logger.warn("Unexpected - no active threads but pending queue not empty");
-				
-//				for (OpenStreetMapTile tile : mPending.keySet())
-//				{
-//					logger.warn("Still in queue" + tile.toString());
-//				}
-//				for (OpenStreetMapTile tile : mWorking.keySet())
-//				{
-//					logger.warn("Thinks we are working on " + tile.toString());
-//				}
-
-				// clearQueue();
 			}
 
+			// if we are alredy working on this forget.
+			synchronized(mWorking)
+			{
+				if (mWorking.containsKey(aTile.getTileId()))
+				{
+					return;
+				}
+			}
 			// this will put the tile in the queue, or move it to the front of
 			// the queue if it's already present
-			mPending.put(aTile.getTileId(), aTile.getRenderer());
-		}
+
+			mWaiting.put(aTile.getTileId(), aTile.getRenderer());
 
 		if (DEBUGMODE)
 			logger.debug(activeCount + " active threads");
@@ -115,10 +103,9 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 	}
 
 	private void clearQueue() {
-		synchronized (mPending) {
-			mPending.clear();
-		}
+//		mPending.clear();
 		mWorking.clear();
+		mWaiting.clear();
 	}
 
 	/**
@@ -150,55 +137,71 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		 */
 		protected abstract void loadTile(long tileId, IOpenStreetMapRendererInfo renderer) throws CantContinueException;
 
-		private long nextTile() {
+		private long nextTile() 
+		{
 
-			synchronized (mPending) {
-				long result = -1;
-				boolean found = false;
+			long result = -1;
+			boolean found = false;
 
-				// get the most recently accessed tile
-				// - the last item in the iterator that's not already being processed
-				TLongIterator iterator = mPending.keySet().iterator();
+			// get the most recently accessed tile
+			// - the last item in the iterator that's not already being processed
+//			TLongIterator iterator = mPending.keySet().iterator();
+//
+//			// TODO this iterates the whole list, make this faster...
+//			try 
+//			{
+//				while (iterator.hasNext()) 
+//				{
+//					final long tileId = iterator.next();
+//					if (!mWorking.containsKey(tileId)) 
+//					{
+//						result = tileId;
+//						found = true;
+//					}
+//				}
+//			} 
+//			catch (final ConcurrentModificationException e) 
+//			{
+//				if (DEBUGMODE)
+//					logger.warn("ConcurrentModificationException break: " + (found));
+//			}
+//			if (!mWaiting.checkQueue())
+//			{
+//				logger.debug("Corrupt already");
+//			}
 
-				// TODO this iterates the whole list, make this faster...
-				while (iterator.hasNext()) {
-					try {
-						final long tileId = iterator.next();
-						if (!mWorking.containsKey(tileId)) {
-							result = tileId;
-							found = true;
-						}
-					} catch (final ConcurrentModificationException e) {
-						if (DEBUGMODE)
-							logger.warn("ConcurrentModificationException break: " + (found));
+			IOpenStreetMapRendererInfo obj =  null;
 
-						// if we've got a result return it, otherwise try again
-						if (found) {
-							break;
-						} else {
-							iterator = mPending.keySet().iterator();
-						}
-					}
-				}
-
-				if (found)
+			
+			synchronized(mWaiting)
+			{
+				result = mWaiting.getLastKey();
+				if (result != -1)
 				{
-					mWorking.put(result, mPending.get(result));
-				}
-
-				if (!found)
-				{
-					// need to do some checking see if this is working.
-					if (DEBUGMODE)
+					obj =  mWaiting.get(result);
+					mWaiting.remove(result);
+					found = true;
+					
+					synchronized(mWorking)
 					{
-						if (!mPending.isEmpty())
-						{
-							logger.info("Returned null with " + mPending.size() + " in queue");
-						}
+						mWorking.put(result, obj);
 					}
 				}
-				return result;
 			}
+		
+//			if (!found)
+//			{
+//				// need to do some checking see if this is working.
+//				if (DEBUGMODE)
+//				{
+//					if (!mPending.isEmpty())
+//					{
+//						logger.info("Returned null with " + mPending.size() + " in queue");
+//					}
+//				}
+//			}
+			
+			return result;
 		}
 
 		/**
@@ -209,10 +212,12 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		public void tileLoaded(final OpenStreetMapTile aTile, final String aTilePath) {
 
 
-			synchronized (mPending) {
-				mPending.remove(aTile.getTileId());
+	//		mPending.remove(aTile.getTileId());
+
+			synchronized(mWorking)
+			{
+				mWorking.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aTilePath);
 
@@ -226,10 +231,11 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		public void tileLoaded(final OpenStreetMapTile aTile, final InputStream aTileInputStream) {
 
 			
-			synchronized (mPending) {
-				mPending.remove(aTile.getTileId());
+//			mPending.remove(aTile.getTileId());
+			synchronized(mWorking)
+			{
+				mWorking.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aTileInputStream);
 
@@ -243,12 +249,16 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		public void tileLoaded(final OpenStreetMapTile aTile, final boolean aRefresh) {
 			
 
-			synchronized (mPending) {
-				mPending.remove(aTile.getTileId());
-			}
-			mWorking.remove(aTile.getTileId());
+//			synchronized (mPending) {
+//				mPending.remove(aTile.getTileId());
+//			}
 
+			synchronized(mWorking)
+			{
+			mWorking.remove(aTile.getTileId());
+			}
 			mCallback.mapTileRequestCompleted(aTile);
+
 		}
 
 		/**
@@ -259,10 +269,12 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		public void tileLoaded(final OpenStreetMapTile aTile, final Drawable aDrawable) {
 
 
-			synchronized (mPending) {
-				mPending.remove(aTile.getTileId());
+//			mPending.remove(aTile.getTileId());
+			
+			synchronized(mWorking)
+			{
+				mWorking.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile.getTileId());
 
 			mCallback.mapTileRequestCompleted(aTile, aDrawable);
 
@@ -271,14 +283,19 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		
 		/**
 		 * A tile has not loaded.
-		 * @param aTile the tile that has loaded
+		 * @param aTile the tile that has not loaded
 		 */
 		public void tileNotLoaded(final OpenStreetMapTile aTile) 
 		{
 			if (DEBUGMODE)
 				logger.debug("Got a tile not loaded");
-			
-			mWorking.remove(aTile.getTileId());
+
+			mWaiting.put(aTile.getTileId(), aTile.getRenderer());
+
+			synchronized(mWorking)
+			{
+				mWorking.remove(aTile.getTileId());
+			}
 		}
 		
 		/**
@@ -289,10 +306,12 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 
 		public void tilePassedOn(final OpenStreetMapTile aTile) 
 		{
-			synchronized (mPending) {
-				mPending.remove(aTile.getTileId());
+//			mPending.remove(aTile.getTileId());
+			
+			synchronized(mWorking)
+			{
+				mWorking.remove(aTile.getTileId());
 			}
-			mWorking.remove(aTile.getTileId());
 		}
 
 		
@@ -305,13 +324,16 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 		final public void run() {
 
 			long tileId;
-			boolean okay = true;
 			
-			while ((tileId = nextTile()) != -1 && okay) {
+			while ((tileId = nextTile()) != -1 ) {
 				if (DEBUGMODE)
 					logger.debug("Next tile: " + tileId);
 				try {
-					loadTile(tileId, mPending.get(tileId));
+					IOpenStreetMapRendererInfo renderer = mWorking.get(tileId);
+					if (renderer != null)
+					{
+						loadTile(tileId, renderer);
+					}
 					// got a tile so back up and running
 				} catch (final CantContinueException e) {
 					logger.info("Tile loader can't continue", e);
@@ -321,8 +343,6 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 					sleep();
 				}
 			}
-			if (DEBUGMODE)
-				logger.debug(okay ? "No more tiles" : "Reducing number of threads");
 		}
 	}
 

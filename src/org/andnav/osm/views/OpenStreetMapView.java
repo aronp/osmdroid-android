@@ -42,6 +42,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
@@ -336,14 +337,19 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	}
 
 	public BoundingBoxE6 getDrawnBoundingBoxE6() {
-		return getBoundingBox(this.getWidth(), this.getHeight());
+		return getBoundingBox(this.getWidth(), this.getHeight(), null);
 	}
 
+	public BoundingBoxE6 getDrawnBoundingBoxE6(BoundingBoxE6 reuse) {
+		return getBoundingBox(this.getWidth(), this.getHeight(), reuse);
+	}
+
+	
 	public BoundingBoxE6 getVisibleBoundingBoxE6() {
-		return getBoundingBox(this.getWidth(), this.getHeight());
+		return getBoundingBox(this.getWidth(), this.getHeight(), null);
 	}
 
-	private BoundingBoxE6 getBoundingBox(final int pViewWidth, final int pViewHeight){
+	private BoundingBoxE6 getBoundingBox(final int pViewWidth, final int pViewHeight,BoundingBoxE6 reuse){
 		final int mapTileZoom = mMapOverlay.getRendererInfo().maptileZoom();
 		final int world_2 = (1 << mZoomLevel + mapTileZoom - 1);
 		final int north = world_2 + getScrollY() - getHeight()/2;
@@ -351,7 +357,7 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		final int west = world_2 + getScrollX() - getWidth()/2;
 		final int east = world_2 + getScrollX() + getWidth()/2;
 
-		return Mercator.getBoundingBoxFromCoords(west, north, east, south, mZoomLevel + mapTileZoom);
+		return Mercator.getBoundingBoxFromCoords(west, north, east, south, mZoomLevel + mapTileZoom, reuse);
 	}
 
 	/**
@@ -449,7 +455,9 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 
 		// snap for all snappables
 		final Point snapPoint = new Point();
+		
 		mProjection = new OpenStreetMapViewProjection(); // XXX why do we need a new projection here?
+
 		for (OpenStreetMapViewOverlay osmvo : this.mOverlays) {
 			if (osmvo instanceof Snappable &&
 					((Snappable)osmvo).onSnapToItem(getScrollX(), getScrollY(), snapPoint, this)) {
@@ -685,13 +693,17 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		if (DEBUGMODE)
 			logger.debug("onTouchEvent(" + event + ")");
 
-		for (OpenStreetMapViewOverlay osmvo : this.mOverlays)
+		int depth = this.mOverlays.size();
+		for (int i = 0; i< depth;i++)
+		{
+			OpenStreetMapViewOverlay osmvo = this.mOverlays.get(i);
 			if (osmvo.onTouchEvent(event, this))
 			{
 				if (DEBUGMODE)
 					logger.debug("overlay handled onTouchEvent");
 				return true;
 			}
+		}
 
 		if (mMultiTouchController != null && mMultiTouchController.onTouchEvent(event)) {
 			if (DEBUGMODE)
@@ -879,12 +891,15 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		this.mZoomController.setZoomOutEnabled(canZoomOut());
 	}
 
-	private int[] getCenterMapTileCoords() {
+	private int[] getCenterMapTileCoords(int [] reuse) 
+	{
+		int [] retval = reuse == null ? new int[2] : reuse; 
 		final int mapTileZoom = this.mMapOverlay.getRendererInfo().maptileZoom();
 		final int worldTiles_2 = 1 << (mZoomLevel-1);
 		// convert to tile coordinate and make positive
-		return new int[] {  (getScrollY() >> mapTileZoom) + worldTiles_2,
-							(getScrollX() >> mapTileZoom) + worldTiles_2 };
+		retval[0] =  (getScrollY() >> mapTileZoom) + worldTiles_2;
+		retval[1] =  (getScrollX() >> mapTileZoom) + worldTiles_2 ;
+		return retval;
 	}
 
 	/**
@@ -933,13 +948,18 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 		private int offsetX = - worldSize_2;
 		private int offsetY = - worldSize_2;
 
-		private BoundingBoxE6 bb;
+		private BoundingBoxE6 bb = new BoundingBoxE6(0,0,0,0);
 		private int zoomLevel;
 		private int tileSizePx;
 		private int[] centerMapTileCoords;
 		private Point upperLeftCornerOfCenterMapTile;
+		final Point tupperLeftcm = new Point();
+		final Point tcentrem = new Point();
+		
+
 
 		private final int[] reuseInt2 = new int[2];
+		private final int[] reuseInt3 = new int[2];
 
 		private OpenStreetMapViewProjection() 
 		{
@@ -971,11 +991,11 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 			 * Get the center MapTile which is above this.mLatitudeE6 and
 			 * this.mLongitudeE6 .
 			 */
-			centerMapTileCoords = getCenterMapTileCoords();
+			centerMapTileCoords = getCenterMapTileCoords(reuseInt3);
 			upperLeftCornerOfCenterMapTile = getUpperLeftCornerOfCenterMapTileInScreen(
-					centerMapTileCoords, tileSizePx, null);
+					centerMapTileCoords, tileSizePx, tupperLeftcm);
 
-			bb = OpenStreetMapView.this.getDrawnBoundingBoxE6();
+			bb = OpenStreetMapView.this.getDrawnBoundingBoxE6(bb);
 			
 		}
 		/**
