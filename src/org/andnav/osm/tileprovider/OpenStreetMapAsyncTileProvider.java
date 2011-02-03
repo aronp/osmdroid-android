@@ -329,7 +329,11 @@ public abstract class OpenStreetMapAsyncTileProvider implements OpenStreetMapTil
 				if (DEBUGMODE)
 					logger.debug("Next tile: " + tileId);
 				try {
-					IOpenStreetMapRendererInfo renderer = mWorking.get(tileId);
+					IOpenStreetMapRendererInfo renderer = null;
+					synchronized(mWorking)
+					{
+						renderer = mWorking.get(tileId);
+					}
 					if (renderer != null)
 					{
 						loadTile(tileId, renderer);
