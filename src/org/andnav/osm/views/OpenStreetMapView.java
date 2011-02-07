@@ -179,6 +179,11 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 
 	public void detach() {
 		mMapOverlay.detach();
+		for (OpenStreetMapViewOverlay overlay : mOverlays)
+		{
+			overlay.detach();
+		}
+		
 	}
 
 	/**

@@ -32,6 +32,7 @@ public class OpenStreetMapTileProviderDirect extends OpenStreetMapTileProvider i
 
 	@Override
 	public void detach() {
+		this.mTileCache.clear();
 		mFileSystemProvider.detach();
 	}
 

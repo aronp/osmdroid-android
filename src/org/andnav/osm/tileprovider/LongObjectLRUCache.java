@@ -267,14 +267,17 @@ public class LongObjectLRUCache<T>
 	}
 
 	@SuppressWarnings("unchecked")
-	public synchronized void remove(long key) 
+	public synchronized T remove(long key) 
 	{
 //		logger.debug("Remove " + key );
-		
+	
+		T retval = null;
 		// first find index of original
 		int index = KeyToArray.get(key);
 		if (index < 0)
-			return;
+			return retval;
+		
+		retval = (T) objArray[index];
 
 		// link up either side.
 		links curr = mLinks[index];
@@ -358,9 +361,16 @@ public class LongObjectLRUCache<T>
 
 		if (DEBUG_QUEUE)
 			checkQueue();
+		
+		removeResource(retval);
+		return retval;
 
 	}
 
+	public void removeResource(T obj)
+	{
+		
+	}
 	
 	private void MoveToFront(int arrayIndex)
 	{
@@ -418,8 +428,11 @@ public class LongObjectLRUCache<T>
 
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void replaceHere(long index, Object obj, int arrayIndex)
 	{
+		removeResource((T) objArray[arrayIndex]);
+
 		objArray[arrayIndex] =  obj;
 		arrayToKey[arrayIndex] = index;
 		KeyToArray.put(index, arrayIndex);
