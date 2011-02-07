@@ -6,7 +6,7 @@
 		So just run
 			ant build jar
 	-->
-	<property name="version.num" value="3.0.2" />
+	<property name="version.num" value="0.0.5" />
 
 
 	<target name="jar">
