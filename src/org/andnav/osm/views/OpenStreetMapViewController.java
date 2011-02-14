@@ -94,7 +94,7 @@ public class OpenStreetMapViewController implements OpenStreetMapViewConstants {
 	 * @param gp
 	 */
 	public void animateTo(final GeoPoint gp, final AnimationType aAnimationType){
-		animateTo(gp.getLatitudeE6(), gp.getLongitudeE6(), aAnimationType, ANIMATION_DURATION_DEFAULT, ANIMATION_SMOOTHNESS_DEFAULT);
+		animateTo(gp.getLatitudeE6(), gp.getLongitudeE6(), aAnimationType, ANIMATION_SMOOTHNESS_DEFAULT,  ANIMATION_DURATION_DEFAULT);
 	}
 
 	/**
@@ -366,7 +366,9 @@ public class OpenStreetMapViewController implements OpenStreetMapViewConstants {
 		// Fields
 		// ===========================================================
 
-		protected final int mPanPerStepLatitudeE6, mPanPerStepLongitudeE6;
+		protected final double mPanPerStepLatitudeE6, mPanPerStepLongitudeE6;
+		protected int latIndex[];
+		protected int longIndex[];
 
 		// ===========================================================
 		// Constructors
@@ -382,11 +384,23 @@ public class OpenStreetMapViewController implements OpenStreetMapViewConstants {
 
 			/* Get the current mapview-center. */
 			final OpenStreetMapView mapview = OpenStreetMapViewController.this.mOsmv;
+			
+			latIndex = new int[aSmoothness];
+			longIndex = new int[aSmoothness];
 			int mapCenterLatE6 = mapview.getMapCenterLatitudeE6();
 			int mapCenterLonE6 = mapview.getMapCenterLongitudeE6();
 
-			this.mPanPerStepLatitudeE6 = (mapCenterLatE6 - aTargetLatitudeE6) / aSmoothness;
-			this.mPanPerStepLongitudeE6 = (mapCenterLonE6 - aTargetLongitudeE6) / aSmoothness;
+			this.mPanPerStepLatitudeE6 = (double)(mapCenterLatE6 - aTargetLatitudeE6) / (double)aSmoothness;
+			this.mPanPerStepLongitudeE6 = (double)(mapCenterLonE6 - aTargetLongitudeE6) / (double)aSmoothness;
+
+			for(int i = 0; i < aSmoothness ; i++)
+			{
+			latIndex[i] = mapCenterLatE6 +  (i * (aTargetLatitudeE6 - mapCenterLatE6 ))/aSmoothness;	
+			longIndex[i]= mapCenterLonE6 +  (i * (aTargetLongitudeE6 - mapCenterLonE6 ))/aSmoothness;	
+			}
+
+			
+			
 
 			this.setName("LinearAnimationRunner");
 		}
@@ -398,21 +412,33 @@ public class OpenStreetMapViewController implements OpenStreetMapViewConstants {
 		@Override
 		public void onRunAnimation(){
 			final OpenStreetMapView mapview = OpenStreetMapViewController.this.mOsmv;
-			final int panPerStepLatitudeE6 = this.mPanPerStepLatitudeE6;
-			final int panPerStepLongitudeE6 = this.mPanPerStepLongitudeE6;
+			final double panPerStepLatitudeE6 = this.mPanPerStepLatitudeE6;
+			final double panPerStepLongitudeE6 = this.mPanPerStepLongitudeE6;
 			final int stepDuration = this.mStepDuration;
 			try {
 				int newMapCenterLatE6;
 				int newMapCenterLonE6;
 
-				for(int i = this.mSmoothness; i > 0 ; i--){
+				for(int i = 0; i< this.mSmoothness;i++)
+				{
 
-					newMapCenterLatE6 = mapview.getMapCenterLatitudeE6() - panPerStepLatitudeE6;
-					newMapCenterLonE6 = mapview.getMapCenterLongitudeE6() - panPerStepLongitudeE6;
-					mapview.setMapCenter(newMapCenterLatE6, newMapCenterLonE6);
+					mapview.setMapCenter(latIndex[i], longIndex[i]);
 
 					Thread.sleep(stepDuration);
 				}
+
+				// finished with arrays.
+				latIndex = null;
+				longIndex = null;
+//				for(int i = this.mSmoothness; i > 0 ; i--){
+//
+//					newMapCenterLatE6 = (int) (mapview.getMapCenterLatitudeE6() - panPerStepLatitudeE6);
+//					newMapCenterLonE6 = (int) (mapview.getMapCenterLongitudeE6() - panPerStepLongitudeE6);
+//
+//					mapview.setMapCenter(newMapCenterLatE6, newMapCenterLonE6);
+//
+//					Thread.sleep(stepDuration);
+//				}
 				mapview.setMapCenter(super.mTargetLatitudeE6, super.mTargetLongitudeE6);
 			} catch (Exception e) {
 				this.interrupt();

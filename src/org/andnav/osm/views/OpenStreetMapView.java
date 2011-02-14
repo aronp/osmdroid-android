@@ -1,7 +1,6 @@
 // Created by plusminus on 17:45:56 - 25.09.2008
 package org.andnav.osm.views;
 
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +12,7 @@ import org.andnav.osm.ResourceProxy;
 import org.andnav.osm.events.MapListener;
 import org.andnav.osm.events.ScrollEvent;
 import org.andnav.osm.events.ZoomEvent;
+import org.andnav.osm.tileprovider.IAreWeConnected;
 import org.andnav.osm.tileprovider.IRegisterReceiver;
 import org.andnav.osm.tileprovider.OpenStreetMapTile;
 import org.andnav.osm.tileprovider.util.CloudmadeUtil;
@@ -42,7 +42,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.graphics.DashPathEffect;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
@@ -138,7 +137,7 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 			final Context context,
 			final AttributeSet attrs,
 			final IOpenStreetMapRendererInfo rendererInfo,
-			OpenStreetMapTileProvider tileProvider)
+			OpenStreetMapTileProvider tileProvider, IAreWeConnected aConnCheck)
 	{
 		super(context, attrs);
 		mResourceProxy = new DefaultResourceProxyImpl(context);
@@ -158,7 +157,7 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 					applicationContext.unregisterReceiver(aReceiver);
 				}
 			};
-			tileProvider = new OpenStreetMapTileProviderDirect(new SimpleInvalidationHandler(), cloudmadeKey, registerReceiver);
+			tileProvider = new OpenStreetMapTileProviderDirect(new SimpleInvalidationHandler(), cloudmadeKey, registerReceiver, aConnCheck);
 		}
 
 		this.mMapOverlay = new OpenStreetMapTilesOverlay(this, OpenStreetMapRendererFactory.getRenderer(rendererInfo, attrs), tileProvider, mResourceProxy);
@@ -190,21 +189,21 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	 * Constructor used by XML layout resource (uses default renderer).
 	 */
 	public OpenStreetMapView(Context context, AttributeSet attrs) {
-		this(context, attrs, null, null);
+		this(context, attrs, null, null, null);
 	}
 
 	/**
 	 * Standard Constructor.
 	 */
-	public OpenStreetMapView(final Context context, final IOpenStreetMapRendererInfo aRendererInfo) {
-		this(context, null, aRendererInfo, null);
+	public OpenStreetMapView(final Context context, final IOpenStreetMapRendererInfo aRendererInfo,  IAreWeConnected aConnCheck) {
+		this(context, null, aRendererInfo, null, aConnCheck);
 	}
 
 	/**
 	 * Standard Constructor (uses default renderer).
 	 */
-	public OpenStreetMapView(final Context context) {
-		this(context, null, null, null);
+	public OpenStreetMapView(final Context context, IAreWeConnected aConnCheck) {
+		this(context, null, null, null, aConnCheck);
 	}
 
 	/**
@@ -213,8 +212,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	public OpenStreetMapView(
 			final Context context,
 			final IOpenStreetMapRendererInfo aRendererInfo,
-			final OpenStreetMapTileProvider aTileProvider) {
-		this(context, null, aRendererInfo, aTileProvider);
+			final OpenStreetMapTileProvider aTileProvider,  IAreWeConnected aConnCheck) {
+		this(context, null, aRendererInfo, aTileProvider, aConnCheck);
 	}
 
 	/**
@@ -230,8 +229,8 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 	 */
 	public OpenStreetMapView(final Context context,
 			final IOpenStreetMapRendererInfo aRendererInfo,
-			final OpenStreetMapView aMapToShareTheTileProviderWith) {
-		this(context, null, aRendererInfo, /* TODO aMapToShareTheTileProviderWith.mTileProvider */ null);
+			final OpenStreetMapView aMapToShareTheTileProviderWith, IAreWeConnected aConnCheck) {
+		this(context, null, aRendererInfo, /* TODO aMapToShareTheTileProviderWith.mTileProvider */ null, aConnCheck);
 	}
 
 	// ===========================================================
@@ -392,10 +391,17 @@ public class OpenStreetMapView extends View implements OpenStreetMapViewConstant
 
 		final int[] coords = Mercator.projectGeoPoint(aLatitudeE6, aLongitudeE6, getPixelZoomLevel(), null);
 		final int worldSize_2 = getWorldSizePx()/2;
-		if (getAnimation() == null || getAnimation().hasEnded()) {
-			mScroller.startScroll(getScrollX(), getScrollY(),
-					coords[MAPTILE_LONGITUDE_INDEX] - worldSize_2 - getScrollX(),
-					coords[MAPTILE_LATITUDE_INDEX] - worldSize_2 - getScrollY(), 500);
+		if (getAnimation() == null || getAnimation().hasEnded()) 
+		{
+		int sx = 	getScrollX();
+		int sy = getScrollY();
+		int tx = coords[MAPTILE_LONGITUDE_INDEX] - worldSize_2 -sx;
+		int ty = coords[MAPTILE_LATITUDE_INDEX] - worldSize_2 - sy;
+//		logger.debug("Set map center " +sx+","+sy+","+tx+","+ty);
+		mScroller.startScroll(sx,sy,tx,ty,200);
+//			mScroller.startScroll(getScrollX(), getScrollY(),
+//					coords[MAPTILE_LONGITUDE_INDEX] - worldSize_2 - getScrollX(),
+//					coords[MAPTILE_LATITUDE_INDEX] - worldSize_2 - getScrollY(), 500);
 			postInvalidate();
 		}
 	}

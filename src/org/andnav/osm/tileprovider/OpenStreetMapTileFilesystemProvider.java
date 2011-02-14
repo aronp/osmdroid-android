@@ -21,11 +21,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
-import android.net.wifi.WifiManager;
 import android.os.Environment;
-import android.telephony.TelephonyManager;
 
 /**
  *
@@ -53,7 +49,7 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	private final ArrayList<ZipFile> mZipFiles = new ArrayList<ZipFile>();
 
 	/** whether we have a data connection */
-	private boolean mConnected = true;
+//	private boolean mConnected = true;
 
 	// TODO sort this out
 	public static final boolean IS_EMULATOR = 
@@ -79,20 +75,15 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 	 * @param aCallback
 	 * @param aRegisterReceiver
 	 */
-	public OpenStreetMapTileFilesystemProvider(final IOpenStreetMapTileProviderCallback aCallback, final IRegisterReceiver aRegisterReceiver) {
+	public OpenStreetMapTileFilesystemProvider(final IOpenStreetMapTileProviderCallback aCallback, final IRegisterReceiver aRegisterReceiver, IAreWeConnected aConnCheck) {
 		super(aCallback, NUMBER_OF_TILE_FILESYSTEM_THREADS, TILE_FILESYSTEM_MAXIMUM_QUEUE_SIZE);
-		mTileDownloader = new OpenStreetMapTileDownloader(aCallback, this);
+		mTileDownloader = new OpenStreetMapTileDownloader(aCallback, this, aConnCheck);
 		this.aRegisterReceiver = aRegisterReceiver;
 		mBroadcastReceiver = new MyBroadcastReceiver();
 
 		checkSdCard();
 
 		findZipFiles();
-
-		final IntentFilter networkFilter = new IntentFilter();
-		networkFilter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
-		networkFilter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-		aRegisterReceiver.registerReceiver(mBroadcastReceiver, networkFilter);
 
 		final IntentFilter mediaFilter = new IntentFilter();
 		mediaFilter.addAction(Intent.ACTION_MEDIA_MOUNTED);
@@ -297,16 +288,13 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 					// check for old tile
 					final long now = System.currentTimeMillis();
 					final long lastModified = tileFile.lastModified();
-					if (now - lastModified > TILE_EXPIRY_TIME_MILLISECONDS) {
+					if (now - lastModified > TILE_EXPIRY_TIME_MILLISECONDS) 
+					{
 						// XXX perhaps we should distinguish between phone and wifi data connection
-						if (mConnected && mCallback.useDataConnection()) {
 							if (DEBUGMODE)
 								logger.debug("Tile has expired, requesting new download: " + aTile);
+							
 							mTileDownloader.loadMapTileAsync(aTile);
-						} else {
-							if (DEBUGMODE)
-								logger.debug("Tile has expired - not connected - not downloading: " + aTile);
-						}
 					}
 
 				} else {
@@ -315,21 +303,13 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 						logger.debug("Tile doesn't exist: " + aTile);
 
 					final InputStream fileFromZip = fileFromZip(aTile);
-					if (fileFromZip == null) {
-						// XXX perhaps we should distinguish between phone and wifi data connection
-						if (mConnected && mCallback.useDataConnection()) {
-							if (DEBUGMODE)
-								logger.debug("Request for download: " + aTile);
-							mTileDownloader.loadMapTileAsync(aTile);
-							tilePassedOn(aTile);
-						} else {
-							if (DEBUGMODE) {
-								logger.debug("Not connected - not downloading: " + aTile);
-								tileNotLoaded(aTile);
-								throw new CantContinueException("No connection");
-							}
-
-						}
+					if (fileFromZip == null) 
+					{
+						if (DEBUGMODE)
+							logger.debug("Request for download: " + aTile);
+						
+						mTileDownloader.loadMapTileAsync(aTile);
+						tilePassedOn(aTile);
 
 						// don't refresh the screen because there's nothing new
 						// tileLoaded(aTile, false);
@@ -360,39 +340,6 @@ public class OpenStreetMapTileFilesystemProvider extends OpenStreetMapAsyncTileP
 
 			final String action = aIntent.getAction();
 			logger.info("onReceive: " + action);
-			boolean wifiOkay = false;
-
-			final ConnectivityManager cm  = (ConnectivityManager)aContext.getSystemService(Context.CONNECTIVITY_SERVICE);
-			if (cm != null)
-			{
-				NetworkInfo info = cm.getNetworkInfo(cm.TYPE_WIFI);
-				if (info != null)
-				{
-					wifiOkay = (info.getState().equals(NetworkInfo.State.CONNECTED));	
-				}
-			}
-
-			
-			final WifiManager wm = (WifiManager) aContext.getSystemService(Context.WIFI_SERVICE);
-			final int wifiState = wm.getWifiState(); // TODO check for permission or catch error
-			if (DEBUGMODE)
-				logger.debug("wifi state=" + wifiState);
-
-			final TelephonyManager tm = (TelephonyManager) aContext.getSystemService(Context.TELEPHONY_SERVICE);
-			final int dataState = tm.getDataState(); // TODO check for permission or catch error
-			if (DEBUGMODE)
-				logger.debug("telephone data state=" + dataState);
-
-			mConnected = wifiState == WifiManager.WIFI_STATE_ENABLED
-					|| dataState == TelephonyManager.DATA_CONNECTED || IS_EMULATOR;
-	
-			// TODO remove this, think I get it now.
-//			mConnected = wifiOkay || (dataState == TelephonyManager.DATA_CONNECTED);
-
-
-			if (DEBUGMODE)
-				logger.debug("mConnected=" + mConnected);
-
 			checkSdCard();
 
 			if (Intent.ACTION_MEDIA_MOUNTED.equals(action)) {

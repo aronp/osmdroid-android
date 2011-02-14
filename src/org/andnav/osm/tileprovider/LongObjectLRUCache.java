@@ -31,6 +31,10 @@ public class LongObjectLRUCache<T>
 
 		KeyToArray = new TLongIntHashMap(size, 0.7f,-1,-1);
 		mLinks = new links[size];
+		for (int i = 0;i < size;i++)
+		{
+			mLinks[i] = new links<T>();
+		}
 		mSize = size;
 	}
 
@@ -61,6 +65,11 @@ public class LongObjectLRUCache<T>
 			System.arraycopy(objArray, 0, tobjArray, 0, mSize);
 			System.arraycopy(arrayToKey, 0, tarrayToKey, 0, mSize);
 			System.arraycopy(mLinks, 0, tmLinks, 0, mSize);
+
+			for (int i = mSize;i < reqsize;i++)
+			{
+				tmLinks[i] = new links<T>();
+			}
 
 			objArray = tobjArray;
 			arrayToKey = tarrayToKey;
@@ -125,7 +134,7 @@ public class LongObjectLRUCache<T>
 	}
 
 
-	public synchronized void put(long index, T obj)
+	public synchronized T put(long index, T obj)
 	{
 //		logger.debug("Put " + index );
 		int newSize = currSize;
@@ -180,6 +189,7 @@ public class LongObjectLRUCache<T>
 		if (DEBUG_QUEUE)
 			checkQueue();
 
+		return obj;
 	}
 	
 
@@ -443,7 +453,7 @@ public class LongObjectLRUCache<T>
 		objArray[arrayIndex] = obj;
 		arrayToKey[arrayIndex] = index;
 		KeyToArray.put(index, arrayIndex);
-		mLinks[arrayIndex] = new links<T>();
+		// mLinks[arrayIndex] = new links<T>();
 		
 		mLinks[arrayIndex].prev = mFirstPtr;
 

@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * @author Manuel Stahl
  *
  */
-public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider implements IOpenStreetMapTileProviderCloudmadeTokenCallback {
+public class OpenStreetMapTileDownloader extends AsyncHttpProvider implements IOpenStreetMapTileProviderCloudmadeTokenCallback {
 
 	// ===========================================================
 	// Constants
@@ -46,8 +46,8 @@ public class OpenStreetMapTileDownloader extends OpenStreetMapAsyncTileProvider 
 	// Constructors
 	// ===========================================================
 
-	public OpenStreetMapTileDownloader(final IOpenStreetMapTileProviderCallback pCallback, final OpenStreetMapTileFilesystemProvider aMapTileFSProvider){
-		super(pCallback, NUMBER_OF_TILE_DOWNLOAD_THREADS, TILE_DOWNLOAD_MAXIMUM_QUEUE_SIZE);
+	public OpenStreetMapTileDownloader(final IOpenStreetMapTileProviderCallback pCallback, final OpenStreetMapTileFilesystemProvider aMapTileFSProvider, IAreWeConnected aConnCheck){
+		super(pCallback, NUMBER_OF_TILE_DOWNLOAD_THREADS, TILE_DOWNLOAD_MAXIMUM_QUEUE_SIZE, aConnCheck);
 		this.mMapTileFSProvider = aMapTileFSProvider;
 	}
 
