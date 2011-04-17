@@ -184,7 +184,7 @@ public class OpenStreetMapTileDownloader extends AsyncHttpProvider implements IO
 	private void sleep()
 	{
 		try {
-			Thread.sleep(5 *1000);
+			Thread.sleep(500);
 		} catch (InterruptedException e) 
 		{
 		}

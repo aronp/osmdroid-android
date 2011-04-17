@@ -70,8 +70,8 @@ public class MyLocationOverlay extends OpenStreetMapViewOverlay implements Senso
 	private final Point mMapCoords = new Point();
 
 	private Location mLocation;
-	private long mLocationUpdateMinTime = 0;
-	private float mLocationUpdateMinDistance = 0.0f;
+	private long mLocationUpdateMinTime = 5;
+	private float mLocationUpdateMinDistance = 5.0f;
 	protected boolean mFollow = false;	// follow location updates
 	private NetworkLocationIgnorer mIgnorer = new NetworkLocationIgnorer();
 
@@ -110,6 +110,8 @@ public class MyLocationOverlay extends OpenStreetMapViewOverlay implements Senso
 	private final float[] mMatrixValues = new float[9];
 	private final GeoPoint mGeoPoint = new GeoPoint(0, 0);
 	private final Matrix mMatrix = new Matrix();
+	Location CurrentLocation = null;
+	long lastLocationTime;
 
 	// ===========================================================
 	// Constructors
@@ -299,17 +301,53 @@ public class MyLocationOverlay extends OpenStreetMapViewOverlay implements Senso
 		}
 	}
 
+	private float loactionAccuracy(Location loc, long timestamp)
+	{
+		float accuracy;
+		if (loc.hasAccuracy())
+		{
+			accuracy = loc.getAccuracy() + Math.max((System.currentTimeMillis() - timestamp)/1000f,0);
+		}
+		else
+		{
+			accuracy = 50 + Math.max((System.currentTimeMillis() - timestamp)/1000f , 0.0f);
+		}
+		return accuracy;
+	}
+	
 	@Override
 	public void onLocationChanged(final Location location) {
+		boolean updateLocation = false;
+		long currTime = System.currentTimeMillis();
+
 		if (DEBUGMODE) {
 			logger.debug("onLocationChanged(" + location + ")");
 		}
+		if (CurrentLocation == null)
+		{
+			updateLocation = true;
+		}
+		else
+		{
+			float accuracy1 = loactionAccuracy(CurrentLocation, lastLocationTime);
+			float accuracy2 = loactionAccuracy(location, currTime);
+			if (accuracy2 < accuracy1 )
+			{
+				updateLocation = true;
+			}
 
+		}
+			
 		// ignore temporary non-gps fix
-		if (mIgnorer.shouldIgnore(location.getProvider(), System.currentTimeMillis())) {
-			logger.debug("Ignore temporary non-gps location");
+		if (!updateLocation) {
+			logger.debug("Ignore less accurate location");
 			return;
 		}
+
+		CurrentLocation  = location;
+		lastLocationTime = currTime;
+
+		logger.debug("Location update Using:"+CurrentLocation.getProvider());
 
 		mLocation = location;
 		if (mFollow) {
